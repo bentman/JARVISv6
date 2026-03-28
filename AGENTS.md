@@ -1,4 +1,4 @@
-# AGENTS.md: Agent Operating Contract for JARVISv5
+# AGENTS.md: Agent Operating Contract for JARVISv6
 
 This file is the authoritative operating contract for all AI (and Human) Agents in this repository.
 

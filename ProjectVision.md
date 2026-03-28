@@ -649,6 +649,7 @@ This applies independently to:
 - TTS
 - LLM reasoning
 - embeddings and memory support services
+- search escalation providers when local or bundled retrieval is insufficient
 
 ### Runtime Selection Inputs
 
