@@ -13,7 +13,7 @@
 * Still not flying the suit.
 * Now attempting to talk before it fully earns the right to.
 
-JARVISv6 is intended to be a **local-first, voice-first personal assistant** for real conversational interaction on user-owned hardware. That is the direction. Not the current reality. This version exists because v5 finally became something structured and real — which made it just stable enough to expose everything it still wasn’t.
+JARVISv6 is intended to be a **local-first, voice-first personal assistant** for real conversational interaction on user-owned hardware. That is the direction. Not the current reality. This version exists because v5 finally became something structured and real — which made it just stable enough to expose everything it still wasn’t. JARVISv6 = v2’s product feel + v3’s hardware realism + v4’s cognition model + v5’s governance, but with voice as the root mode instead of an add-on.
 
 So this is another restart. Not from nothing. Just from a slightly more informed place.
 
@@ -23,7 +23,7 @@ So this is another restart. Not from nothing. Just from a slightly more informed
 
 ## 👁️ Project Vision (“Trying to sound natural without becoming nonsense”)
 
-JARVISv6 is an attempt to move toward something that *feels* conversationally present — without abandoning the structure that made v5 meaningful. The goal is not to bolt voice onto a task engine and call it done. The goal is to see whether a system with actual control, memory, and validation can survive being interacted with like it belongs in the room.
+JARVISv6 is an attempt to move toward something that *feels* conversationally present — without abandoning the structure that made v5 meaningful. The goal is not to bolt voice onto a task engine and call it done. The goal is to see whether a system with actual control, memory, and validation can survive being interacted with like it belongs in the room. 
 
 This is less about adding features and more about removing the distance between system and interaction.
 
