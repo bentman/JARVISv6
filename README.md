@@ -7,7 +7,7 @@
 
 ---
 
-## 📚 **J**ust **A**nother **R**e-wite, **V**oice **I**ncluded **S**ystem — Mark6
+## 📚 **J**ust **A**nother **R**e-write, **V**oice **I**ncluded **S**ystem — Mark6
 
 * Still not sentient.
 * Still not flying the suit.
