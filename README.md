@@ -59,7 +59,7 @@ Underneath, the same ideas still apply:
 * Recover from some failures instead of doubling down on them
 * Support conversational flow (interruptions, timing, continuation)
 
-> See `SYSTEM_INVENTORY.md` for what is verified vs what is still optimistic.
+> See [SYSTEM_INVENTORY.md](SYSTEM_INVENTORY.md) for what is verified vs what is still optimistic.
 
 ---
 
@@ -125,19 +125,19 @@ just don’t expect experimental software to behave like a finished product.
 Built on the accumulated progress (and mistakes) of:
 
 * [**JARVISv1 (Just A Rough Very Incomplete Start)**](https://github.com/bentman/JARVISv1)
-  Where it technically began.
+ > Where it technically began.
 
 * [**JARVISv2 (Just Almost Real Viable Intelligent System)**](https://github.com/bentman/JARVISv2)
-  Where it started to feel possible.
+ > Where it started to feel possible.
 
 * [**JARVISv3 (Just A Reliable Variant In Service)**](https://github.com/bentman/JARVISv3)
-  Where it became usable more than once.
+ > Where it became usable more than once.
 
 * [**JARVISv4 (Just A Reimagined Version In Stabilization)**](https://github.com/bentman/JARVISv4)
-  Where structure became intentional.
+ > Where structure became intentional.
 
 * [**JARVISv5 (Just A Runnable, Verified Iterative System)**](https://github.com/bentman/JARVISv5)
-  Where it finally held together — and made this version necessary.
+ > Where it finally held together — and made this version necessary.
 
 ---
 
