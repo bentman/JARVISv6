@@ -1,9 +1,9 @@
 # 🤖 J.A.R.V.I.S v6
 
-![Not Magic](https://img.shields.io/badge/Not-Magic-informational-purple) 
-![Stability: Negotiable](https://img.shields.io/badge/Stability-Negotiable-yellow) 
-![Status: Restarted Again](https://img.shields.io/badge/Status-Restarted_Again-green) 
-![License: MIT](https://img.shields.io/badge/License-MIT-blue)
+![ai: Not Magic](https://img.shields.io/badge/ai-Not_Magic-purple) 
+![stability: Negotiable](https://img.shields.io/badge/stability-Negotiable-yellow) 
+![status: Restarted Again](https://img.shields.io/badge/status-Restarted_Again-green) 
+![license: MIT](https://img.shields.io/badge/license-MIT-blue)
 
 ---
 
