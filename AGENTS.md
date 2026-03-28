@@ -88,6 +88,7 @@ Use this precedence order:
 2. `ProjectVision.md`
 3. `SYSTEM_INVENTORY.md`
 4. `CHANGE_LOG.md`
+5. `tree_root.md`
 
 If a conflict is observed between files and runtime behavior, report the conflict and propose the smallest correction.
 
