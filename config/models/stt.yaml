@@ -1,0 +1,59 @@
+# STT runtime and model catalog — populated progressively per slice
+# Slice 0: entries sufficient for capability flag derivation and profile validation
+# Slice 1: runtime initialization and model loading added
+
+family: whisper
+
+models:
+  whisper-large-v3-turbo:
+    size_params_b: 0.8
+    multilingual: true
+    recommended_runtime: ["faster-whisper", "whisper.cpp"]
+    min_memory_gb: 4
+    npu_supported: false
+    notes: "Primary default — CUDA desktop and Apple Silicon"
+
+  whisper-small:
+    size_params_b: 0.244
+    multilingual: true
+    recommended_runtime: ["faster-whisper", "openvino-whisper", "onnx-whisper"]
+    min_memory_gb: 2
+    npu_supported: true
+    notes: "CPU baseline and Intel/Qualcomm NPU path"
+
+  whisper-base:
+    size_params_b: 0.074
+    multilingual: true
+    recommended_runtime: ["faster-whisper"]
+    min_memory_gb: 1
+    npu_supported: true
+    notes: "Low-memory CPU fallback"
+
+  whisper-tiny:
+    size_params_b: 0.039
+    multilingual: true
+    recommended_runtime: ["faster-whisper"]
+    min_memory_gb: 1
+    npu_supported: true
+    notes: "Emergency degraded mode only"
+
+runtimes:
+  faster-whisper:
+    platforms: ["windows-cuda", "linux-cuda", "cpu"]
+    dependency: "faster-whisper>=1.0"
+    pinned_note: null
+
+  whisper.cpp:
+    platforms: ["darwin-arm64"]
+    dependency: "whispercpp"
+    pinned_note: null
+
+  openvino-whisper:
+    platforms: ["windows-intel-npu", "linux-intel-npu"]
+    dependency: "optimum-intel==1.25.2"
+    pinned_note: "Requires transformers==4.52 — incompatible with transformers>=4.53 as of OpenVINO 2025.3"
+
+  onnx-whisper:
+    platforms: ["windows-qualcomm", "linux-qualcomm"]
+    dependency: "onnxruntime"
+    pinned_note: null

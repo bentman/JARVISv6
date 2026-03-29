@@ -25,6 +25,12 @@
 
 ## Inventory
 
+- Capability: Hardware Profiler (Slice 0) verified - 2026-03-28 23:08
+  - State: Verified
+  - Location: `backend/app/core/capabilities.py`, `backend/app/hardware/profiler.py`, `backend/app/hardware/detectors/`, `backend/tests/unit/test_hardware_detector.py`, `backend/tests/runtime/test_profiler_live.py`
+  - Validation: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_detector.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_profiler_live.py -v -s`
+  - Notes: Callable `run_profiler()` emits `FullCapabilityReport(profile: HardwareProfile, flags: CapabilityFlags)` with implemented OS/CPU/GPU/CUDA/NPU/memory detector coverage.
+
 - Capability: SYSTEM_INVENTORY extablished - 2026-02-14 13:35
   - State: Implemented
   - Location: `SYSTEM_INVENTORY.md`

@@ -1,0 +1,55 @@
+profiles:
+  nvidia_cuda_desktop_high:
+    match_pattern: "nvidia-cuda-desktop-*"
+    min_memory_gb: 24
+    llm_quantization: "int4"
+    stt_runtime: "faster-whisper"
+    stt_model: "whisper-large-v3-turbo"
+    max_concurrency: 4
+
+  nvidia_cuda_desktop_mid:
+    match_pattern: "nvidia-cuda-desktop-*"
+    min_memory_gb: 16
+    llm_quantization: "int8"
+    stt_runtime: "faster-whisper"
+    stt_model: "whisper-large-v3-turbo"
+    max_concurrency: 2
+
+  cpu_only_capable:
+    match_pattern: "cpu-nocuda-*"
+    min_memory_gb: 16
+    llm_quantization: "none"
+    stt_runtime: "faster-whisper"
+    stt_model: "whisper-small"
+    max_concurrency: 1
+
+  cpu_only_constrained:
+    match_pattern: "cpu-nocuda-*"
+    min_memory_gb: 0
+    llm_quantization: "none"
+    stt_runtime: "faster-whisper"
+    stt_model: "whisper-base"
+    max_concurrency: 1
+
+  intel_npu:
+    match_pattern: "*-nocuda-*-*"
+    npu_vendor: "intel"
+    stt_runtime: "openvino-whisper"
+    stt_model: "whisper-small"
+    max_concurrency: 1
+
+  apple_silicon:
+    match_pattern: "*-nocuda-*"
+    os: "Darwin"
+    arch: "ARM64"
+    stt_runtime: "whisper.cpp"
+    stt_model: "whisper-large-v3-turbo"
+    max_concurrency: 2
+
+  degraded:
+    match_pattern: "*"
+    min_memory_gb: 0
+    stt_runtime: "faster-whisper"
+    stt_model: "whisper-tiny"
+    max_concurrency: 1
+    requires_degraded_mode: true
