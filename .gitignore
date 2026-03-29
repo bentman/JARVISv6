@@ -11,7 +11,6 @@
 # tracked example
 !/.env.example
 
-
 # ------------------------------------------------------------
 # Python
 # ------------------------------------------------------------
@@ -111,6 +110,7 @@ Thumbs.db
 !/data/cache/
 !/data/episodic/
 !/data/logs/
+!/data/memory/
 !/data/retrieval/
 !/data/search/
 !/data/semantic/
@@ -121,35 +121,40 @@ Thumbs.db
 !/data/archives/.gitkeep
 
 # data/cache
-/data/cache/*
 !/data/cache/.gitkeep
+/data/cache/*
+!/data/redis/.gitkeep
+/data/redis/*
+!/data/turns/.gitkeep
+/data/turns/*
 
 # data/episodic
 !/data/episodic/.gitkeep
 
 # data/logs
-/data/logs/*
 !/data/logs/.gitkeep
+/data/logs/*
 /data/logs/*.jsonl
 
-# data/retrieval
-!/data/retrieval/.gitkeep
+# data/memory
+!/data/memory/.gitkeep
+!/data/memory/episodic/.gitkeep
+/data/memory/episodic/*
+!/data/memory/semantic/.gitkeep
+/data/memory/semantic/*
+!/data/memory/working/.gitkeep
+/data/memory/working/*
+!/data/memory/working/.gitkeep
+/data/memory/working/*
 
 # data/search
 !/data/search/.gitkeep
-!/data/search/searxng/
 !/data/search/searxng/.gitkeep
-!/data/search/ddgs/
+/data/search/searxng/*
 !/data/search/ddgs/.gitkeep
-!/data/search/tavily/
+/data/search/ddgs/*
 !/data/search/tavily/.gitkeep
-
-# data/semantic
-!/data/semantic/.gitkeep
-
-# data/working_state
-!/data/working_state/.gitkeep
-/data/working_state/*.json
+/data/search/tavily/*
 
 # generic runtime artifacts (fallback)
 /data/**/*.db
@@ -171,15 +176,25 @@ Thumbs.db
 /logs/
 
 # report outputs (repo-root anchored)
+!/reports/.gitkeep
 /reports/*.txt
 /reports/*.err
 /reports/*.json
-/reports/*.log
-
+!reports/benchmarks/.gitkeep
+reports/benchmarks/*
+!reports/diagnogstics/.gitkeep
+reports/diagnogstics/*
+!reports/tests/.gitkeep
+reports/tests/*
+!reports/validation/.gitkeep
+reports/validation/*
 
 # ------------------------------------------------------------
 # Model artifacts (prevent large binary commits anywhere)
 # ------------------------------------------------------------
+# keep repository placeholder(s)
+!/models/.gitkeep
+
 # global heavy model artifacts
 **/*.gguf
 **/*.bin
@@ -188,6 +203,3 @@ Thumbs.db
 **/*.pth
 **/*.ckpt
 **/*.onnx
-
-# keep repository placeholder(s)
-!/models/.gitkeep

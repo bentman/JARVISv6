@@ -15,6 +15,16 @@
 
 ## Entries
 
+- 2026-03-29 06:32
+  - Summary: Unit-test patch correction was completed by removing the stale monkeypatch reference to `detect_cuda_via_providers` from the profiler unit-test path.
+  - Scope: backend/tests/unit/test_hardware_detector.py
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_detector.py::test_profiler_run_is_unit_testable_with_monkeypatched_detectors -q -vv`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_detector.py -q`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope unit`
+    ```text
+    PASS targeted test: backend/tests/unit/test_hardware_detector.py::test_profiler_run_is_unit_testable_with_monkeypatched_detectors PASSED [100%]
+    PASS unit file: 7 passed in 1.07s
+    PASS harness unit scope: UNIT: PASS | [INVARIANTS] UNIT=PASS | [PASS] JARVISv6 backend is validated!
+    ```
+
 - 2026-03-28 23:30
   - Summary: Architect-review corrections were completed by removing the dead CUDA helper empty-list path and replacing the AMD `pyrsmi` import-only stub with real initialize/query/shutdown flow.
   - Scope: backend/app/hardware/profiler.py, backend/app/hardware/detectors/gpu_detector.py, backend/requirements.txt

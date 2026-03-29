@@ -83,7 +83,6 @@ def test_profiler_run_is_unit_testable_with_monkeypatched_detectors(monkeypatch)
         },
     )
     monkeypatch.setattr(profiler, "detect_cuda", lambda: True)
-    monkeypatch.setattr(profiler, "detect_cuda_via_providers", lambda _providers: False)
     monkeypatch.setattr(
         profiler,
         "detect_npu",

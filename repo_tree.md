@@ -20,7 +20,7 @@ JARVISv6 should use a repo layout that reinforces runtime domains, keeps config 
 ```text
 JARVISv6/
 ├─ backend/                           # backend runtime, APIs, orchestration, providers, artifacts
-├─ cache/                             # mutable cache data and backing-store dev assets (redis state, temp); not source code
+├─ cache/                             # mutable cache and backing-store dev assets (redis state, temp); not source code
 ├─ config/                            # declarative config: app, models, policies, personality, prompts
 ├─ data/                              # mutable runtime state: memory, sessions, turns, temp
 ├─ desktop/                           # desktop shell (tauri/native integration, overlays, tray, hotkeys)
