@@ -1,4 +1,2 @@
 # backend/hardware
 psutil>=5.9
-GPUtil>=1.4
-onnxruntime>=1.17

@@ -15,7 +15,6 @@
 
 ## Entries
 
-- 2026-03-28 17:59
   - Summary: Slice 0.3 CPU detector and minimal hardware dependency declaration were implemented and validated.
   - Scope: backend/app/hardware/detectors/cpu_detector.py, backend/requirements.txt
   - Evidence: `backend\.venv\Scripts\python -m pip install -r backend/requirements.txt`; `backend\.venv\Scripts\python -m compileall backend/app/hardware/detectors/cpu_detector.py`; `backend\.venv\Scripts\python -c "from backend.app.hardware.detectors.cpu_detector import detect_cpu; print(detect_cpu())"`
