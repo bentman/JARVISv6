@@ -192,6 +192,11 @@ reports/validation/*
 # ------------------------------------------------------------
 # Model artifacts (prevent large binary commits anywhere)
 # ------------------------------------------------------------
+# Downloaded model artifacts — do not commit
+models/stt/
+models/tts/
+models/llm/
+
 # keep repository placeholder(s)
 !/models/.gitkeep
 

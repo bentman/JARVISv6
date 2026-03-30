@@ -15,6 +15,81 @@
 
 ## Entries
 
+- 2026-03-29 23:20
+  - Summary: Sub-slices 1.5 and 1.6 were closed together as the validated Slice 1 acceptance/model-acquisition gate, with runtime STT fallback exercised and full backend validation passing.
+  - Scope: backend/tests/unit/test_slice1_sst_turn_units.py, backend/tests/runtime/test_slice1_sst_turn_live.py, backend/app/models/catalog.py, backend/app/models/manager.py, scripts/ensure_models.py, backend/app/runtimes/stt/local_runtime.py, backend/requirements.txt, scripts/validate_backend.py
+  - Evidence: `backend/.venv/Scripts/python -m pip install -r backend/requirements.txt`; `backend/.venv/Scripts/python -c "import ctypes; ctypes.WinDLL('cublas64_12.dll'); print('cublas load: PASS')"`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_sst_turn_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope runtime`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope all`
+    ```text
+    PASS install: Successfully installed nvidia-cublas-cu12-12.9.2.10 nvidia-cuda-nvrtc-cu12-12.9.86 nvidia-cudnn-cu12-9.20.0.48
+    OBSERVED CUDA direct-load check: FileNotFoundError: Could not find module 'cublas64_12.dll' (or one of its dependencies)
+    PASS live fallback path: [STT DEVICE] CUDA unavailable (cublas64_12.dll not loadable) — falling back to cpu
+    PASS live test: backend/tests/runtime/test_slice1_sst_turn_live.py::test_voice_turn_live ... PASSED
+    PASS runtime harness: RUNTIME: PASS | [INVARIANTS] RUNTIME=PASS
+    PASS full harness: UNIT: PASS | RUNTIME: PASS | [INVARIANTS] UNIT=PASS | RUNTIME=PASS
+    ```
+
+- 2026-03-29 12:18
+  - Summary: Sub-slice 1.6 model acquisition mechanism was completed for STT with config-driven verify/download/ensure operations and explicit local model-path loading.
+  - Scope: backend/app/models/__init__.py, backend/app/models/catalog.py, backend/app/models/manager.py, scripts/ensure_models.py, config/models/stt.yaml, backend/requirements.txt, .gitignore, backend/app/runtimes/stt/local_runtime.py
+  - Evidence: `backend/.venv/Scripts/python -m pip install -r backend/requirements.txt`; `backend/.venv/Scripts/python -m compileall backend/app/models/manager.py backend/app/models/catalog.py scripts/ensure_models.py backend/app/runtimes/stt/local_runtime.py`; `backend/.venv/Scripts/python -c "from backend.app.models.catalog import get_model_entry; e=get_model_entry('whisper-large-v3-turbo'); print('hf_repo_id:', e['hf_repo_id']); print('local_dir:', e['local_dir'])"`; `backend/.venv/Scripts/python scripts/ensure_models.py --verify-only --family stt --model whisper-large-v3-turbo`; `backend/.venv/Scripts/python scripts/ensure_models.py --family stt --model whisper-large-v3-turbo`; `backend/.venv/Scripts/python scripts/ensure_models.py --verify-only --family stt --model whisper-large-v3-turbo`; `backend/.venv/Scripts/python -c "from pathlib import Path; d=Path('models/stt/whisper-large-v3-turbo'); files=list(d.iterdir()) if d.exists() else []; print('model_dir_exists:', d.exists()); print('file_count:', len(files)); print('files:', [f.name for f in files[:5]])"`; `backend/.venv/Scripts/python -c "from backend.app.models.catalog import get_model_entry; from backend.app.models.manager import ensure_model, verify_model; e=get_model_entry('whisper-small'); p=ensure_model(e['hf_repo_id'], e['local_dir']); print('catalog_manager_flow', p, verify_model(p))"`
+    ```text
+    PASS install: Requirement already satisfied: huggingface_hub>=0.23
+    PASS compile: manager.py | catalog.py | ensure_models.py | local_runtime.py
+    PASS catalog: hf_repo_id: openai/whisper-large-v3-turbo | local_dir: models/stt/whisper-large-v3-turbo
+    PASS verify-before: [MISSING] whisper-large-v3-turbo → models/stt/whisper-large-v3-turbo
+    PASS ensure/download: [DOWNLOAD] ... | [DONE] whisper-large-v3-turbo → models/stt/whisper-large-v3-turbo
+    PASS verify-after: [PRESENT] whisper-large-v3-turbo → models/stt/whisper-large-v3-turbo
+    PASS dir check: model_dir_exists: True | file_count: 14
+    PASS architecture proof: catalog_manager_flow models/stt/whisper-small True
+    NOTE transient issue corrected in-scope: ModuleNotFoundError: No module named 'backend' in scripts/ensure_models.py; fixed by repo-root sys.path bootstrap before backend imports.
+    NOTE mechanism is catalog/manager-based and ready for future LLM catalog extension; no LLM download behavior implemented in this sub-slice.
+    ```
+
+- 2026-03-29 11:28
+  - Summary: Sub-slice 1.4 deterministic conversation-state flow, prompt assembly, responder, and one-turn voice orchestration were completed.
+  - Scope: backend/app/conversation/states.py, backend/app/conversation/engine.py, backend/app/cognition/prompt_assembler.py, backend/app/cognition/responder.py, backend/app/services/voice_service.py
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/conversation/states.py backend/app/conversation/engine.py backend/app/cognition/prompt_assembler.py backend/app/cognition/responder.py backend/app/services/voice_service.py`; `backend/.venv/Scripts/python -c "from backend.app.conversation.states import ConversationState; print([s.name for s in ConversationState])"`; `backend/.venv/Scripts/python -c "from backend.app.personality.loader import load_personality_profile; from backend.app.cognition.prompt_assembler import assemble_prompt; p=load_personality_profile('default'); print('personality', p.profile_id); print('prompt_non_empty', bool(assemble_prompt('test transcript', p).strip()))"`; `backend/.venv/Scripts/python -c "from pathlib import Path; from backend.app.services.voice_service import ensure_temp_dir; p=ensure_temp_dir(); print('temp_dir_exists', Path(p).exists(), str(p))"`
+    ```text
+    PASS compile: Compiling 'backend/app/conversation/states.py'... | 'backend/app/conversation/engine.py'... | 'backend/app/cognition/prompt_assembler.py'... | 'backend/app/cognition/responder.py'... | 'backend/app/services/voice_service.py'...
+    PASS states: ['BOOTSTRAP', 'PROFILING', 'IDLE', 'LISTENING', 'TRANSCRIBING', 'REASONING', 'ACTING', 'RESPONDING', 'SPEAKING', 'INTERRUPTED', 'RECOVERING', 'FAILED']
+    PASS personality/prompt: personality default | prompt_non_empty True
+    PASS temp dir: temp_dir_exists True data\temp
+    NOTE fail-closed paths implemented and code-reviewed: transition no-op (`ConversationEngine.transition`), empty LLM response (`get_response`), and voice-turn failure handling (`run_voice_turn` transitions to FAILED, logs, re-raises).
+    ```
+
+- 2026-03-29 11:12
+  - Summary: Sub-slice 1.3 STT abstraction, faster-whisper local runtime, and fixed-duration microphone capture were completed with explicit fail-closed paths.
+  - Scope: backend/requirements.txt, backend/app/runtimes/stt/base.py, backend/app/runtimes/stt/local_runtime.py, backend/app/runtimes/stt/stt_runtime.py
+  - Evidence: `backend/.venv/Scripts/python -m pip install -r backend/requirements.txt`; `backend/.venv/Scripts/python -m compileall backend/app/runtimes/stt/base.py backend/app/runtimes/stt/local_runtime.py backend/app/runtimes/stt/stt_runtime.py`; `backend/.venv/Scripts/python -c "from backend.app.runtimes.stt.local_runtime import FasterWhisperSTT; print('stt available:', FasterWhisperSTT('whisper-large-v3-turbo').is_available())"`; `backend/.venv/Scripts/python -c "import sounddevice as sd; print('input devices:', [d['name'] for d in sd.query_devices() if d['max_input_channels'] > 0])"`
+    ```text
+    PASS install: Successfully installed ... faster-whisper-1.2.1 ... sounddevice-0.5.5 ... soundfile-0.13.1
+    PASS compile: Compiling 'backend/app/runtimes/stt/base.py'... | 'backend/app/runtimes/stt/local_runtime.py'... | 'backend/app/runtimes/stt/stt_runtime.py'...
+    PASS stt available: True
+    PASS input devices: ['Microsoft Sound Mapper - Input', 'Microphone (Logi USB Headset)', ...]
+    NOTE fail-closed paths implemented and code-reviewed: no input device (`capture_utterance`), missing audio path and transcription failure (`FasterWhisperSTT.transcribe`); not runtime-triggered on this host.
+    ```
+
+- 2026-03-29 10:53
+  - Summary: Sub-slice 1.2 LLM runtime interface and deterministic selector were completed with fail-closed runtime selection behavior.
+  - Scope: backend/requirements.txt, backend/app/core/settings.py, backend/app/runtimes/llm/base.py, backend/app/runtimes/llm/local_runtime.py, backend/app/runtimes/llm/ollama_runtime.py, backend/app/routing/runtime_selector.py
+  - Evidence: `backend/.venv/Scripts/python -m pip install -r backend/requirements.txt`; `backend/.venv/Scripts/python -m compileall backend/app/core/settings.py backend/app/runtimes/llm/base.py backend/app/runtimes/llm/local_runtime.py backend/app/runtimes/llm/ollama_runtime.py backend/app/routing/runtime_selector.py`; `backend/.venv/Scripts/python -c "from backend.app.runtimes.llm.local_runtime import LlamaCppLLM; print('llama_cpp available:', LlamaCppLLM().is_available())"`; `backend/.venv/Scripts/python -c "from backend.app.routing.runtime_selector import select_llm_runtime; import sys; try: r=select_llm_runtime(); print(type(r).__name__); except Exception as e: print(type(e).__name__, str(e))"`; `backend/.venv/Scripts/python -c "from backend.app.routing.runtime_selector import select_llm_runtime`nimport sys`ntry:`n    r=select_llm_runtime()`n    print(type(r).__name__)`nexcept Exception as e:`n    print(type(e).__name__, str(e))"`
+    ```text
+    PASS install: Successfully installed ... httpx-0.28.1 ... ollama-0.6.1
+    PASS compile: Compiling 'backend/app/core/settings.py'... | 'backend/app/runtimes/llm/base.py'... | 'backend/app/runtimes/llm/local_runtime.py'... | 'backend/app/runtimes/llm/ollama_runtime.py'... | 'backend/app/routing/runtime_selector.py'...
+    PASS llama.cpp availability: llama_cpp available: False
+    NOTE selector validation attempt 1: SyntaxError: invalid syntax
+    PASS selector validation (corrected command): OllamaLLM
+    ```
+
+- 2026-03-29 10:29
+  - Summary: Sub-slice 1.1 personality schema, loader, and default profile were completed.
+  - Scope: backend/app/personality/schema.py, backend/app/personality/loader.py, config/personality/default.yaml
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/personality/schema.py backend/app/personality/loader.py`; `backend/.venv/Scripts/python -c "from backend.app.personality.loader import load_personality_profile; p=load_personality_profile('default'); print(p.profile_id, p.display_name, p.enabled)"`
+    ```text
+    PASS compile: Compiling 'backend/app/personality/schema.py'... | Compiling 'backend/app/personality/loader.py'...
+    PASS loader: default JARVIS True
+    ```
+
 - 2026-03-29 06:32
   - Summary: Unit-test patch correction was completed by removing the stale monkeypatch reference to `detect_cuda_via_providers` from the profiler unit-test path.
   - Scope: backend/tests/unit/test_hardware_detector.py

@@ -11,6 +11,8 @@ models:
     recommended_runtime: ["faster-whisper", "whisper.cpp"]
     min_memory_gb: 4
     npu_supported: false
+    hf_repo_id: "mobiuslabsgmbh/faster-whisper-large-v3-turbo"
+    local_dir: "models/stt/whisper-large-v3-turbo"
     notes: "Primary default — CUDA desktop and Apple Silicon"
 
   whisper-small:
@@ -19,6 +21,8 @@ models:
     recommended_runtime: ["faster-whisper", "openvino-whisper", "onnx-whisper"]
     min_memory_gb: 2
     npu_supported: true
+    hf_repo_id: "Systran/faster-whisper-small"
+    local_dir: "models/stt/whisper-small"
     notes: "CPU baseline and Intel/Qualcomm NPU path"
 
   whisper-base:
@@ -27,6 +31,8 @@ models:
     recommended_runtime: ["faster-whisper"]
     min_memory_gb: 1
     npu_supported: true
+    hf_repo_id: "Systran/faster-whisper-base"
+    local_dir: "models/stt/whisper-base"
     notes: "Low-memory CPU fallback"
 
   whisper-tiny:
@@ -35,6 +41,8 @@ models:
     recommended_runtime: ["faster-whisper"]
     min_memory_gb: 1
     npu_supported: true
+    hf_repo_id: "Systran/faster-whisper-tiny"
+    local_dir: "models/stt/whisper-tiny"
     notes: "Emergency degraded mode only"
 
 runtimes:
