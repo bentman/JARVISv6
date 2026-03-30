@@ -11,6 +11,7 @@ This file is the authoritative operating contract for all AI (and Human) Agents 
 Dependency source of truth:
 
 - `backend/requirements.txt` is the single source of truth for backend Python dependencies.
+- If a new backend package is required for an approved code change, declare it in the proposal and update/install backend/requirements.txt in backend/.venv before implementing code that depends on it.
 - Any backend dependency add, remove, or version change must update `backend/requirements.txt` in the same task.
 - `backend/requirements.txt` entries must be grouped with clear category headers by backend area (for example: `# backend/core`, `# backend/main`, `# backend/memory`).
 - Default version operator is `>=`.
