@@ -20,6 +20,12 @@ def _has_input_device() -> tuple[bool, str]:
         return False, f"unable to query input devices: {exc}"
 
 
+import pytest
+
+
+@pytest.mark.filterwarnings(
+    "ignore:.*torch\\.nn\\.utils\\.weight_norm.*deprecated.*torch\\.nn\\.utils\\.parametrizations\\.weight_norm.*:FutureWarning:torch\\.nn\\.utils\\.weight_norm"
+)
 def test_spoken_voice_turn_live() -> None:
     mic_ok, mic_reason = _has_input_device()
     assert mic_ok, f"[PREREQ FAILED] microphone: {mic_reason}"

@@ -15,6 +15,43 @@
 
 ## Entries
 
+- 2026-03-30 18:16
+  - Summary: Hugging Face local-first runtime correction was completed by forcing `HF_HUB_OFFLINE=1` in normal TTS runtime after model ensure and before Kokoro/HF-backed loading, while keeping explicit model acquisition online-capable via `HF_HUB_OFFLINE=0` in `scripts/ensure_models.py`.
+  - Scope: backend/app/runtimes/tts/local_runtime.py, scripts/ensure_models.py
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/runtimes/tts/local_runtime.py scripts/ensure_models.py`; `@'<runtime proof script>'@ | backend/.venv/Scripts/python -`; `@'<acquisition proof script>'@ | backend/.venv/Scripts/python -`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice2_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_stt_turn_live.py -v -s`
+    ```text
+    PASS compile: Compiling 'backend/app/runtimes/tts/local_runtime.py'... | Compiling 'scripts/ensure_models.py'...
+    PASS runtime proof: HF_HUB_OFFLINE_AFTER_RUNTIME: 1
+    PASS acquisition proof: [PRESENT] kokoro-v1.0 → models/tts/kokoro-v1.0 | HF_HUB_OFFLINE_AFTER_ENSURE_SCRIPT: 0
+    PASS slice2 live: backend/tests/runtime/test_slice2_tts_turn_live.py::test_spoken_voice_turn_live ... PASSED | 1 passed
+    PASS slice1 live: backend/tests/runtime/test_slice1_stt_turn_live.py::test_voice_turn_live ... PASSED | 1 passed
+    ```
+
+- 2026-03-30 14:11
+  - Summary: Warning-hygiene correction was completed by adding a narrow test-scoped filter for the third-party Kokoro/Torch `FutureWarning` so it no longer surfaces in the two live runtime tests; runtime behavior was unchanged.
+  - Scope: backend/tests/runtime/test_slice1_stt_turn_live.py, backend/tests/runtime/test_slice2_tts_turn_live.py
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_stt_turn_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice2_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope runtime`
+    ```text
+    PASS slice1 live: backend/tests/runtime/test_slice1_stt_turn_live.py::test_voice_turn_live ... PASSED | 1 passed
+    PASS slice2 live: backend/tests/runtime/test_slice2_tts_turn_live.py::test_spoken_voice_turn_live ... PASSED | 1 passed
+    PASS runtime harness: PASS: runtime: 3 tests | RUNTIME: PASS | [PASS] JARVISv6 backend is validated!
+    OBSERVED runtime note (non-blocking): [STT DEVICE] CUDA unavailable (cublas64_12.dll not loadable) — falling back to cpu
+    OBSERVED runtime note (non-blocking): [ctranslate2] compute type inferred float16; converted to float32 on CPU fallback
+    OBSERVED runtime note (non-blocking): Warning: unauthenticated requests to the HF Hub (HF_TOKEN not set)
+    ```
+
+- 2026-03-30 13:39
+  - Summary: Prompt-leakage break-fix was completed by adding responder-boundary sanitation/acceptance so prompt scaffolding/context echo is stripped (or rejected if only scaffold remains) before downstream `[RESPONSE]` logging and TTS.
+  - Scope: backend/app/cognition/responder.py
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/cognition/responder.py backend/app/runtimes/llm/ollama_runtime.py`; `@'<proof script>'@ | backend/.venv/Scripts/python -`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_stt_turn_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice2_tts_turn_live.py -v -s`
+    ```text
+    PASS compile: Compiling 'backend/app/cognition/responder.py'...
+    PASS proof: SANITIZED: Clean user-facing reply.
+    PASS proof: REJECTED: RuntimeError responder: sanitized response is empty after removing prompt scaffolding
+    PASS slice1 live: [RESPONSE] You're welcome!... | PASSED
+    PASS slice2 live: [RESPONSE] You're welcome!... | PASSED
+    ```
+
 - 2026-03-30 11:33
   - Summary: Sub-slice 2.5 was completed by realigning the existing Slice 2 unit test to the approved `synthesize(...)` contract and validating Slice 2 plus required Slice 0/1 regression coverage from the corrected repo state.
   - Scope: backend/tests/unit/test_slice2_tts_turn_units.py, backend/tests/runtime/test_slice2_tts_turn_live.py

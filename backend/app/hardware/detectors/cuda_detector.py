@@ -6,7 +6,11 @@ import subprocess
 
 
 def detect_cuda() -> bool:
-    """Return True when CUDA is detected via torch or host CUDA tooling."""
+    """Return True when CUDA/NVIDIA presence is detected on the host.
+
+    This is a host-level signal only. It does not guarantee that every backend
+    runtime in the active Python environment can actually execute on CUDA.
+    """
 
     try:
         import torch  # type: ignore

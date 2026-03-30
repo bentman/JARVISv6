@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -49,6 +50,10 @@ def _iter_tts_targets(model: str | None, all_models: bool) -> list[tuple[str, di
 
 
 def main() -> int:
+    # Explicit acquisition path is intentionally online-capable.
+    # Ensure runtime-forced offline state does not block intentional pulls.
+    os.environ["HF_HUB_OFFLINE"] = "0"
+
     parser = argparse.ArgumentParser(description="Ensure model artifacts are present")
     parser.add_argument("--family", required=True, choices=["stt", "tts"])
     parser.add_argument("--model")

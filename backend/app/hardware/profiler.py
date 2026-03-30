@@ -132,6 +132,9 @@ def derive_capability_flags(profile: HardwareProfile) -> CapabilityFlags:
     )
     stt_runtime, stt_model = _recommend_stt(profile, requires_degraded_mode)
 
+    # `profile.cuda_available` is currently a host-level CUDA/NVIDIA presence
+    # signal. Runtime-specific CUDA usability must still be decided by each
+    # backend stack (for example, CTranslate2 for STT or PyTorch for TTS).
     return CapabilityFlags(
         supports_local_llm=memory_total_gb >= 8.0,
         supports_gpu_llm=gpu_available,
@@ -203,6 +206,8 @@ def run_profiler() -> FullCapabilityReport:
     cpu_info = detect_cpu()
     mem_info = detect_memory()
     gpu_info = detect_gpu()
+    # Host-level CUDA/NVIDIA presence only. Runtime stacks may still require
+    # their own backend-specific availability checks before selecting CUDA.
     cuda_available = bool(detect_cuda())
 
     npu_info = detect_npu()

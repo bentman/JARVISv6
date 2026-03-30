@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -108,6 +109,10 @@ class KokoroTTSRuntime(TTSBase):
                 raise RuntimeError(
                     f"KokoroTTSRuntime: ensured model directory not found: {resolved_local_dir}"
                 )
+
+            # Runtime path is local-first after model acquisition/ensure.
+            # Force HF Hub offline mode before third-party Kokoro/HF-backed loading.
+            os.environ["HF_HUB_OFFLINE"] = "1"
 
             if self.device.lower() == "cuda":
                 try:

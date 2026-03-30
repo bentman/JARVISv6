@@ -25,6 +25,12 @@
 
 ## Inventory
 
+- Capability: Spoken Response / Local TTS via Kokoro with response sanitation and local-first HF runtime (Slice 2) verified - 2026-03-30 18:27
+  - State: Verified
+  - Location: `config/models/tts.yaml`, `backend/app/models/catalog.py`, `backend/app/models/manager.py`, `scripts/ensure_models.py`, `backend/app/runtimes/tts/base.py`, `backend/app/runtimes/tts/local_runtime.py`, `backend/app/runtimes/tts/tts_runtime.py`, `backend/app/runtimes/tts/playback.py`, `backend/app/services/voice_service.py`, `backend/app/cognition/responder.py`, `backend/tests/runtime/test_slice2_tts_turn_live.py`, `backend/tests/runtime/test_slice1_stt_turn_live.py`
+  - Validation: `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice2_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_stt_turn_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope all`; `backend/.venv/Scripts/python -m compileall backend/app/runtimes/tts/local_runtime.py scripts/ensure_models.py`
+  - Notes: Observable path includes Kokoro TTS catalog/model-acquisition, local TTS runtime + selector, standalone playback, `SPEAKING` execution in `run_voice_turn(...)`, responder-boundary sanitation before `[RESPONSE]`/TTS, and runtime `HF_HUB_OFFLINE=1` with explicit acquisition path `HF_HUB_OFFLINE=0`.
+
 - Capability: Spoken Response / Local TTS via Kokoro (Slice 2) verified - 2026-03-30 11:40
   - State: Verified
   - Location: `config/models/tts.yaml`, `backend/app/models/catalog.py`, `backend/app/models/manager.py`, `scripts/ensure_models.py`, `backend/app/runtimes/tts/base.py`, `backend/app/runtimes/tts/local_runtime.py`, `backend/app/runtimes/tts/tts_runtime.py`, `backend/app/runtimes/tts/playback.py`, `backend/app/services/voice_service.py`, `backend/tests/unit/test_slice2_tts_turn_units.py`, `backend/tests/runtime/test_slice2_tts_turn_live.py`
