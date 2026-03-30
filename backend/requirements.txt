@@ -11,6 +11,8 @@ pyrsmi>=1.0
 # Voice / Speech
 # ============================================================
 faster-whisper>=1.0
+kokoro>=0.9.4
+misaki[en]>=0.9.3
 nvidia-cublas-cu12>=12.0
 nvidia-cudnn-cu12>=9.0
 sounddevice>=0.4

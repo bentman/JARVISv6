@@ -127,56 +127,82 @@ def parse_junit_results(xml_path: Path) -> tuple[list[tuple[str, str]], str]:
 def run_pytest_suite(logger: ValidationLogger, suite_name: str, suite_path: str) -> SuiteResult:
     logger.header(f"{suite_name} tests")
 
-    if not Path(suite_path).exists():
+    suite_root = Path(suite_path)
+    if not suite_root.exists():
         message = f"Directory not found: {suite_path}"
         logger.log(f"[FAIL] {message}")
         return SuiteResult(status="FAIL", summary=message)
 
-    xml_path = Path(f".pytest_{suite_name}_{logger.timestamp}.xml")
-    cmd = [
-        sys.executable,
-        "-m",
-        "pytest",
-        suite_path,
-        "--junitxml",
-        str(xml_path),
-        "-v",
-        "--tb=short",
-    ]
-
-    result = subprocess.run(cmd, capture_output=True, text=True)
-
-    rows, summary = parse_junit_results(xml_path)
     status = "PASS"
     has_skip = False
+    total = 0
+    failures = 0
+    errors = 0
+    skipped = 0
 
-    for row_status, test_name in rows:
-        if row_status == "PASS":
-            logger.log(f"[PASS] PASS: {test_name}")
-        elif row_status == "SKIP":
-            logger.log(f"[SKIP] SKIP: {test_name}")
-            has_skip = True
-        else:
-            logger.log(f"[FAIL] FAIL: {test_name}")
+    if suite_name == "runtime":
+        targets = sorted(suite_root.glob("test_*.py"))
+    else:
+        targets = [suite_root]
+
+    if not targets:
+        message = f"No pytest targets found: {suite_path}"
+        logger.log(f"[FAIL] {message}")
+        return SuiteResult(status="FAIL", summary=message)
+
+    for target in targets:
+        xml_path = Path(f".pytest_{suite_name}_{target.stem}_{logger.timestamp}.xml")
+        cmd = [
+            sys.executable,
+            "-m",
+            "pytest",
+            str(target),
+            "--junitxml",
+            str(xml_path),
+            "-v",
+            "--tb=short",
+        ]
+        if suite_name == "runtime":
+            cmd.append("-s")
+
+        result = subprocess.run(cmd, text=True)
+        rows, _summary = parse_junit_results(xml_path)
+
+        for row_status, test_name in rows:
+            total += 1
+            if row_status == "PASS":
+                logger.log(f"[PASS] PASS: {test_name}")
+            elif row_status == "SKIP":
+                logger.log(f"[SKIP] SKIP: {test_name}")
+                has_skip = True
+                skipped += 1
+            else:
+                logger.log(f"[FAIL] FAIL: {test_name}")
+                status = "FAIL"
+                failures += 1
+
+        if result.returncode not in (0, 5):
             status = "FAIL"
+            if not rows:
+                logger.log(f"[FAIL] pytest returned non-zero for target: {target}")
 
-    if result.returncode not in (0, 5):
-        status = "FAIL"
+        try:
+            xml_path.unlink(missing_ok=True)
+        except Exception:
+            pass
 
     if status == "PASS" and has_skip:
         status = "PASS_WITH_SKIPS"
 
-    if status == "FAIL" and not rows:
-        stderr_excerpt = ANSI_RE.sub("", (result.stderr or result.stdout or "")).strip()
-        if stderr_excerpt:
-            logger.log(stderr_excerpt[:1000])
-
+    summary_parts = [f"{total} tests"]
+    if failures:
+        summary_parts.append(f"{failures} failed")
+    if errors:
+        summary_parts.append(f"{errors} errors")
+    if skipped:
+        summary_parts.append(f"{skipped} skipped")
+    summary = ", ".join(summary_parts)
     logger.log(f"{status}: {suite_name}: {summary}")
-
-    try:
-        xml_path.unlink(missing_ok=True)
-    except Exception:
-        pass
 
     return SuiteResult(status=status, summary=summary)
 

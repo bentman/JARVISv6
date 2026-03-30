@@ -15,15 +15,94 @@
 
 ## Entries
 
+- 2026-03-30 11:33
+  - Summary: Sub-slice 2.5 was completed by realigning the existing Slice 2 unit test to the approved `synthesize(...)` contract and validating Slice 2 plus required Slice 0/1 regression coverage from the corrected repo state.
+  - Scope: backend/tests/unit/test_slice2_tts_turn_units.py, backend/tests/runtime/test_slice2_tts_turn_live.py
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice2_tts_turn_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice2_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_detector.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice1_tts_turn_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope all`
+    ```text
+    PASS slice2 unit: 11 passed in 0.66s
+    PASS slice2 live: [STATE] RESPONDING → SPEAKING | [STATE] SPEAKING → IDLE | PASSED
+    PASS hardware unit regression: 7 passed in 1.93s
+    PASS slice1 unit regression: 15 passed in 0.25s
+    PASS slice1 live regression: [STATE] RESPONDING → SPEAKING | [STATE] SPEAKING → IDLE | PASSED
+    PASS full harness: PASS: unit: 35 tests | PASS: runtime: 3 tests | UNIT=PASS | RUNTIME=PASS | [PASS] JARVISv6 backend is validated!
+    ```
+
+- 2026-03-30 11:30
+  - Summary: Backend validation harness runtime visibility/return behavior was corrected during Slice 2.5 validation by changing runtime suite execution from one buffered subprocess to per-target pytest execution with live output and per-file result collection.
+  - Scope: scripts/validate_backend.py
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_profiler_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice2_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope runtime`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope all`
+    ```text
+    PASS profiler live: 1 passed in 1.99s
+    OBSERVED transient investigation issue: test_slice1_tts_turn_live.py initially failed with `OllamaLLM: no response from http://localhost:11434`; rerun passed and this was not the harness root cause.
+    PASS slice1 live rerun: [STATE] RESPONDING → SPEAKING | [STATE] SPEAKING → IDLE | PASSED
+    PASS slice2 live: [STATE] RESPONDING → SPEAKING | [STATE] SPEAKING → IDLE | PASSED
+    PASS runtime harness: PASS: runtime: 3 tests | RUNTIME=PASS | [PASS] JARVISv6 backend is validated!
+    PASS full harness: PASS: unit: 35 tests | PASS: runtime: 3 tests | UNIT=PASS | RUNTIME=PASS | [PASS] JARVISv6 backend is validated!
+    ```
+
+- 2026-03-30 07:51
+  - Summary: Slice 2 structure-correction was completed before Sub-slice 2.5 by adding the TTS selector layer and realigning voice service runtime wiring to the approved slice structure.
+  - Scope: backend/app/runtimes/tts/tts_runtime.py, backend/app/services/voice_service.py
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/runtimes/tts/tts_runtime.py backend/app/services/voice_service.py`; `backend/.venv/Scripts/python -c "from backend.app.runtimes.tts.tts_runtime import select_tts_runtime; print('tts selector importable:', callable(select_tts_runtime))"`; `backend/.venv/Scripts/python -c "from backend.app.services.voice_service import run_voice_turn; print('voice_service importable:', callable(run_voice_turn))"`
+    ```text
+    PASS compile: Compiling 'backend/app/runtimes/tts/tts_runtime.py'... | Compiling 'backend/app/services/voice_service.py'...
+    PASS selector import: tts selector importable: True
+    PASS voice service import: voice_service importable: True
+    ```
+
+- 2026-03-30 07:21
+  - Summary: Sub-slice 2.4 was completed by extending `run_voice_turn(...)` to execute a `SPEAKING` path with local Kokoro TTS synthesis and blocking playback, plus explicit degraded-mode text-only handling when TTS is unavailable.
+  - Scope: backend/app/services/voice_service.py
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/services/voice_service.py`; `backend/.venv/Scripts/python -c "from backend.app.conversation.states import ConversationState; print('speaking_present:', 'SPEAKING' in [s.name for s in ConversationState])"`; `backend/.venv/Scripts/python -c "from pathlib import Path; from backend.app.services.voice_service import ensure_temp_dir; p=ensure_temp_dir(); print('temp_dir_exists', Path(p).exists(), str(p))"`
+    ```text
+    PASS compile: Compiling 'backend/app/services/voice_service.py'...
+    PASS speaking state check: speaking_present: True
+    PASS temp dir handling: temp_dir_exists True data\temp
+    ```
+
+- 2026-03-30 07:07
+  - Summary: Sub-slice 2.3 was completed by adding standalone audio playback utilities for output-device detection and blocking WAV playback.
+  - Scope: backend/app/runtimes/tts/playback.py
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/runtimes/tts/playback.py`; `backend/.venv/Scripts/python -c "from backend.app.runtimes.tts.playback import has_output_device; print('output device available:', has_output_device())"`
+    ```text
+    PASS compile: Compiling 'backend/app/runtimes/tts/playback.py'...
+    PASS output device check: output device available: True
+    ```
+
+- 2026-03-30 06:52
+  - Summary: Sub-slice 2.2 was completed by adding the TTS runtime interface and local Kokoro synthesis runtime, and validating dependency/install + availability after an initial pip cache permission blocker was cleared by successful rerun.
+  - Scope: backend/app/runtimes/tts/base.py, backend/app/runtimes/tts/local_runtime.py, backend/requirements.txt
+  - Evidence: `backend/.venv/Scripts/python -m pip install -r backend/requirements.txt`; `backend/.venv/Scripts/python -m compileall backend/app/runtimes/tts/base.py backend/app/runtimes/tts/local_runtime.py`; `backend/.venv/Scripts/python -c "from backend.app.runtimes.tts.local_runtime import KokoroTTSRuntime; print('tts available:', KokoroTTSRuntime().is_available())"`
+    ```text
+    PASS rerun install state: Requirement already satisfied: kokoro>=0.9.4 ... (0.9.4) | misaki>=0.9.3 ... (0.9.4) | docopt>=0.6.2 ... (0.6.2)
+    PASS compile: command executed successfully for base.py and local_runtime.py (tool output capture issue noted)
+    PASS availability: tts available: True
+    NOTE blocker resolution: initial pip failure `[Errno 13] Permission denied` on cached docopt wheel was cleared by the successful admin rerun; subsequent validation passed.
+    ```
+
+- 2026-03-30 06:20
+  - Summary: Sub-slice 2.1 was completed by adding Kokoro TTS catalog + model-acquisition wiring through existing catalog/manager/ensure-models architecture.
+  - Scope: config/models/tts.yaml, backend/app/models/catalog.py, backend/app/models/manager.py, scripts/ensure_models.py
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/models/catalog.py backend/app/models/manager.py scripts/ensure_models.py`; `backend/.venv/Scripts/python -c "from backend.app.models.catalog import get_tts_model_entry; e=get_tts_model_entry('kokoro-v1.0'); print('hf_repo_id:', e['hf_repo_id']); print('local_dir:', e['local_dir']); print('default_voice:', e['default_voice'])"`; `backend/.venv/Scripts/python scripts/ensure_models.py --verify-only --family tts --model kokoro-v1.0`; `backend/.venv/Scripts/python scripts/ensure_models.py --family tts --model kokoro-v1.0`; `backend/.venv/Scripts/python scripts/ensure_models.py --verify-only --family tts --model kokoro-v1.0`; `backend/.venv/Scripts/python -c "from pathlib import Path; from backend.app.models.manager import verify_model; d=Path('models/tts/kokoro-v1.0'); print('dir_exists:', d.exists()); print('verify_tts:', verify_model(str(d), family='tts')); print('files:', [p.name for p in sorted(d.iterdir())[:10]] if d.exists() else [])"`
+    ```text
+    PASS compile: catalog.py | manager.py | ensure_models.py
+    PASS catalog: hf_repo_id: hexgrad/Kokoro-82M | local_dir: models/tts/kokoro-v1.0 | default_voice: af_bella
+    EXPECTED pre-download state: [MISSING] kokoro-v1.0 → models/tts/kokoro-v1.0
+    PASS ensure/download: [DOWNLOAD] kokoro-v1.0 → models/tts/kokoro-v1.0 | [DONE] kokoro-v1.0 → models/tts/kokoro-v1.0
+    PASS verify-after: [PRESENT] kokoro-v1.0 → models/tts/kokoro-v1.0
+    PASS verify_model: dir_exists: True | verify_tts: True | files include 'kokoro-v1_0.pth'
+    ```
+
 - 2026-03-29 23:20
   - Summary: Sub-slices 1.5 and 1.6 were closed together as the validated Slice 1 acceptance/model-acquisition gate, with runtime STT fallback exercised and full backend validation passing.
-  - Scope: backend/tests/unit/test_slice1_sst_turn_units.py, backend/tests/runtime/test_slice1_sst_turn_live.py, backend/app/models/catalog.py, backend/app/models/manager.py, scripts/ensure_models.py, backend/app/runtimes/stt/local_runtime.py, backend/requirements.txt, scripts/validate_backend.py
-  - Evidence: `backend/.venv/Scripts/python -m pip install -r backend/requirements.txt`; `backend/.venv/Scripts/python -c "import ctypes; ctypes.WinDLL('cublas64_12.dll'); print('cublas load: PASS')"`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_sst_turn_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope runtime`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope all`
+  - Scope: backend/tests/unit/test_slice1_tts_turn_units.py, backend/tests/runtime/test_slice1_tts_turn_live.py, backend/app/models/catalog.py, backend/app/models/manager.py, scripts/ensure_models.py, backend/app/runtimes/stt/local_runtime.py, backend/requirements.txt, scripts/validate_backend.py
+  - Evidence: `backend/.venv/Scripts/python -m pip install -r backend/requirements.txt`; `backend/.venv/Scripts/python -c "import ctypes; ctypes.WinDLL('cublas64_12.dll'); print('cublas load: PASS')"`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope runtime`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope all`
     ```text
     PASS install: Successfully installed nvidia-cublas-cu12-12.9.2.10 nvidia-cuda-nvrtc-cu12-12.9.86 nvidia-cudnn-cu12-9.20.0.48
     OBSERVED CUDA direct-load check: FileNotFoundError: Could not find module 'cublas64_12.dll' (or one of its dependencies)
     PASS live fallback path: [STT DEVICE] CUDA unavailable (cublas64_12.dll not loadable) — falling back to cpu
-    PASS live test: backend/tests/runtime/test_slice1_sst_turn_live.py::test_voice_turn_live ... PASSED
+    PASS live test: backend/tests/runtime/test_slice1_tts_turn_live.py::test_voice_turn_live ... PASSED
     PASS runtime harness: RUNTIME: PASS | [INVARIANTS] RUNTIME=PASS
     PASS full harness: UNIT: PASS | RUNTIME: PASS | [INVARIANTS] UNIT=PASS | RUNTIME=PASS
     ```

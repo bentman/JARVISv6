@@ -1,0 +1,21 @@
+# TTS runtime and model catalog
+# Slice 2: Kokoro local TTS baseline
+
+family: kokoro
+
+models:
+  kokoro-v1.0:
+    size_params_b: 0.082
+    multilingual: false
+    supported_voices: ["af_bella", "af_sarah", "am_adam", "am_michael", "bf_emma", "bf_isabella", "bm_george", "bm_lewis"]
+    default_voice: "af_bella"
+    min_memory_gb: 2
+    hf_repo_id: "hexgrad/Kokoro-82M"
+    local_dir: "models/tts/kokoro-v1.0"
+    notes: "Primary default — Apache 2.0, 82M params, English voices"
+
+runtimes:
+  kokoro:
+    platforms: ["windows", "linux", "darwin"]
+    dependency: "kokoro>=0.9.4"
+    system_dep_note: "Linux/macOS require espeak-ng system package. Windows uses bundled misaki[en]."

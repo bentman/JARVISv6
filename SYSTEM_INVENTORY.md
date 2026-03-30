@@ -25,10 +25,16 @@
 
 ## Inventory
 
+- Capability: Spoken Response / Local TTS via Kokoro (Slice 2) verified - 2026-03-30 11:40
+  - State: Verified
+  - Location: `config/models/tts.yaml`, `backend/app/models/catalog.py`, `backend/app/models/manager.py`, `scripts/ensure_models.py`, `backend/app/runtimes/tts/base.py`, `backend/app/runtimes/tts/local_runtime.py`, `backend/app/runtimes/tts/tts_runtime.py`, `backend/app/runtimes/tts/playback.py`, `backend/app/services/voice_service.py`, `backend/tests/unit/test_slice2_tts_turn_units.py`, `backend/tests/runtime/test_slice2_tts_turn_live.py`
+  - Validation: `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice2_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope all`
+  - Notes: Observable path includes Kokoro TTS catalog/model acquisition, local TTS runtime selection, blocking playback utility, and `SPEAKING` state execution in the one-turn voice service path.
+
 - Capability: Minimal Voice Turn + STT Model Acquisition Gate (Slice 1) verified - 2026-03-29 23:26
   - State: Verified
-  - Location: `backend/app/personality/schema.py`, `backend/app/personality/loader.py`, `backend/app/core/settings.py`, `backend/app/runtimes/llm/base.py`, `backend/app/runtimes/llm/local_runtime.py`, `backend/app/runtimes/llm/ollama_runtime.py`, `backend/app/routing/runtime_selector.py`, `backend/app/runtimes/stt/base.py`, `backend/app/runtimes/stt/local_runtime.py`, `backend/app/runtimes/stt/stt_runtime.py`, `backend/app/models/catalog.py`, `backend/app/models/manager.py`, `scripts/ensure_models.py`, `config/models/stt.yaml`, `backend/app/conversation/states.py`, `backend/app/conversation/engine.py`, `backend/app/cognition/prompt_assembler.py`, `backend/app/cognition/responder.py`, `backend/app/services/voice_service.py`, `backend/tests/unit/test_slice1_sst_turn_units.py`, `backend/tests/runtime/test_slice1_sst_turn_live.py`
-  - Validation: `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_sst_turn_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope runtime`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope all`
+  - Location: `backend/app/personality/schema.py`, `backend/app/personality/loader.py`, `backend/app/core/settings.py`, `backend/app/runtimes/llm/base.py`, `backend/app/runtimes/llm/local_runtime.py`, `backend/app/runtimes/llm/ollama_runtime.py`, `backend/app/routing/runtime_selector.py`, `backend/app/runtimes/stt/base.py`, `backend/app/runtimes/stt/local_runtime.py`, `backend/app/runtimes/stt/stt_runtime.py`, `backend/app/models/catalog.py`, `backend/app/models/manager.py`, `scripts/ensure_models.py`, `config/models/stt.yaml`, `backend/app/conversation/states.py`, `backend/app/conversation/engine.py`, `backend/app/cognition/prompt_assembler.py`, `backend/app/cognition/responder.py`, `backend/app/services/voice_service.py`, `backend/tests/unit/test_slice1_tts_turn_units.py`, `backend/tests/runtime/test_slice1_tts_turn_live.py`
+  - Validation: `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope runtime`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope all`
   - Notes: Observable path includes personality load, deterministic stateful one-turn orchestration, LLM runtime hierarchy, STT catalog/manager ensure path, and exercised CPU fallback when CUDA DLL load was unavailable.
 
 - Capability: Hardware Profiler (Slice 0) verified - 2026-03-28 23:08

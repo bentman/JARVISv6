@@ -11,6 +11,8 @@ from backend.app.personality.schema import PersonalityProfile
 from backend.app.routing.runtime_selector import select_llm_runtime
 from backend.app.runtimes.stt.local_runtime import FasterWhisperSTT
 from backend.app.runtimes.stt.stt_runtime import capture_utterance
+from backend.app.runtimes.tts.playback import play_audio
+from backend.app.runtimes.tts.tts_runtime import select_tts_runtime
 
 
 def ensure_temp_dir() -> str:
@@ -55,6 +57,17 @@ def run_voice_turn(report: FullCapabilityReport, personality: PersonalityProfile
         engine.transition(ConversationState.RESPONDING)
         response = get_response(prompt, llm)
         print(f"[RESPONSE] {response}")
+
+        engine.transition(ConversationState.SPEAKING)
+        tts = select_tts_runtime(report)
+        if tts is None:
+            print("[DEGRADED] TTS unavailable — text response only")
+            engine.transition(ConversationState.IDLE)
+            return response
+
+        tts_audio_path = str(Path(temp_dir) / "response.wav")
+        tts.synthesize(response, tts_audio_path)
+        play_audio(tts_audio_path)
 
         engine.transition(ConversationState.IDLE)
         return response
