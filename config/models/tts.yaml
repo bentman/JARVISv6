@@ -8,7 +8,7 @@ models:
     size_params_b: 0.082
     multilingual: false
     supported_voices: ["af_bella", "af_sarah", "am_adam", "am_michael", "bf_emma", "bf_isabella", "bm_george", "bm_lewis"]
-    default_voice: "af_bella"
+    default_voice: "bf_isabella"
     min_memory_gb: 2
     hf_repo_id: "hexgrad/Kokoro-82M"
     local_dir: "models/tts/kokoro-v1.0"
