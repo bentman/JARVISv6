@@ -131,7 +131,7 @@ Backend:
 
 - Run Python validation via `backend/.venv/Scripts/python`.
 - Primary harness: `scripts/validate_backend.py`.
-- Tests are under `tests/unit`, `tests/integration`, and `tests/agentic`.
+- Tests are under `backend/tests/runtime`, `backend/tests/unit` (and `backend/tests/integration`, and `backend/tests/agentic` allowed).
 - Standard test command pattern:
   - Targeted first: `backend/.venv/Scripts/python -m pytest tests/unit -q` (or matching integration/agentic path for scope)
   - Full suite when required by scope: `backend/.venv/Scripts/python -m pytest tests/`
