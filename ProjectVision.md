@@ -69,6 +69,8 @@ If this path does not work in the active runtime, the system is not considered c
 
 The first callable system capability in JARVISv6 is the hardware profiler.
 
+Hardware-authority rule: hardware-dependent runtime selection starts in the profiler. Config files define catalog/default metadata. Runtime modules execute the selected runtime, model, and device; they do not invent hardware policy locally.
+
 Before UI, before voice capture, before model selection, before orchestration, the system must detect the execution environment and emit a capability flags object.
 
 This profile is the root input for:
@@ -202,6 +204,8 @@ The user should understand at all times whether JARVIS is:
 ## First System Capability: Hardware Profiler
 
 The hardware profiler is the first required implementation slice of JARVISv6.
+
+Hardware-authority rule: hardware-dependent runtime selection starts in the profiler. Config files define catalog/default metadata. Runtime modules execute the selected runtime, model, and device; they do not invent hardware policy locally.
 
 ### Purpose
 
