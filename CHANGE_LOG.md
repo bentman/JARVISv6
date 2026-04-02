@@ -15,6 +15,18 @@
 
 ## Entries
 
+- 2026-04-02 10:09
+  - Summary: Personality authority correction was completed by making `config/personality/jarvis_personality.json` the canonical default identity/persona source, applying `config/personality/default.yaml` as runtime contract/tuning overlay in the resolved profile, and enforcing identity authority in the shared generation path so explicit name/identity turns align to configured persona instead of model-native fallback.
+  - Scope: backend/app/personality/loader.py, backend/app/cognition/prompt_assembler.py, backend/app/cognition/responder.py, backend/app/services/turn_service.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/personality/loader.py backend/app/cognition/prompt_assembler.py backend/app/cognition/responder.py backend/app/services/turn_service.py`; `backend/.venv/Scripts/python -c "from backend.app.personality.loader import load_personality_profile; p=load_personality_profile('default'); print('profile_id:', p.profile_id); print('display_name:', p.display_name); print('identity_summary:', p.identity_summary); print('tone:', p.tone); print('response_style:', p.response_style)"`; `backend/.venv/Scripts/python -c "from backend.app.hardware.profiler import run_profiler; from backend.app.personality.loader import load_personality_profile; from backend.app.conversation.session_manager import SessionManager; from backend.app.memory.working import WorkingMemory; from backend.app.services.turn_service import run_turn; report=run_profiler(); p=load_personality_profile('default'); s=SessionManager.open_session(); m=WorkingMemory(max_turns=5); r=run_turn(report,p,'What is your name?',session=s,memory=m); print('name_response:', r); SessionManager.close_session(s)"`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3a_session_continuity_runtime.py -v -s`
+    ```text
+    PASS resolved profile: display_name: J.A.R.V.I.S.
+    PASS resolved profile: identity_summary: You are J.A.R.V.I.S. (Just A Rather Very Intelligent System), the user's Personal AI Assistant...
+    PASS resolved profile overlay fields: tone: neutral | response_style: direct
+    PASS identity runtime response: name_response: ... As J.A.R.V.I.S., the Just A Rather Very Intelligent System at your service ...
+    PASS runtime regression: backend/tests/runtime/test_slice3a_session_continuity_runtime.py::test_session_continuity_runtime ... PASSED | 1 passed in 19.30s
+    ```
+
 - 2026-04-02 07:57
   - Summary: Live/operator prompt consistency correction was completed by normalizing explicit microphone guidance and “speak now” phrase prompts across live runtime mic-input tests while preserving existing test intent, assertions, and acceptance criteria.
   - Scope: backend/tests/runtime/test_slice1_stt_turn_live.py, backend/tests/runtime/test_slice2_tts_turn_live.py, backend/tests/runtime/test_slice3b_multiturn_voice_live.py, CHANGE_LOG.md

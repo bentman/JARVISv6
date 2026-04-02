@@ -13,8 +13,12 @@ def assemble_prompt(
     personality: PersonalityProfile,
     context_turns: list[TurnSummary] | None = None,
 ) -> str:
+    identity_line = (
+        f"You are {personality.display_name}. Maintain this exact assistant identity at all times. "
+        "Never claim to be another assistant, model, or provider name."
+    )
     system_line = (
-        f"[System: {personality.identity_summary}. Tone: {personality.tone}. "
+        f"[System: {identity_line} {personality.identity_summary}. Tone: {personality.tone}. "
         "Respond in English only.]"
     )
 
@@ -35,6 +39,8 @@ def assemble_prompt(
 
     return (
         "System context:\n"
+        f"- identity: {personality.display_name} (fixed)\n"
+        "- identity_rule: never claim any other assistant/model identity\n"
         f"- identity_summary: {personality.identity_summary}\n"
         f"- tone: {personality.tone}\n"
         "- response_language: english\n\n"

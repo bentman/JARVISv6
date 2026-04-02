@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from backend.app.personality.schema import PersonalityProfile
 from backend.app.runtimes.llm.base import LLMBase
 
 
@@ -22,6 +23,16 @@ _CONTINUATION_BLEED_RE = re.compile(
     r"|\[New turn[:\]]"   # "[New turn:]" or "[New turn]"
     r"|\[Turn \d+"        # "[Turn N]" fabricated turn markers
     r")",
+    re.IGNORECASE,
+)
+
+_IDENTITY_QUERY_RE = re.compile(
+    r"\b(what(?:'s|\s+is)\s+your\s+(?:name|codename)|who\s+are\s+you|your\s+name)\b",
+    re.IGNORECASE,
+)
+
+_MODEL_NATIVE_IDENTITY_RE = re.compile(
+    r"\b(phi(?:-?\d+(?:\.\d+)?)?|assistant|chatgpt|llama|mistral|qwen|gemma)\b",
     re.IGNORECASE,
 )
 
@@ -94,3 +105,20 @@ def get_response(prompt: str, llm: LLMBase) -> str:
     if not sanitized:
         raise RuntimeError("responder: sanitized response is empty after removing prompt scaffolding")
     return sanitized
+
+
+def enforce_identity_response(
+    transcript: str,
+    response_text: str,
+    personality: PersonalityProfile,
+) -> str:
+    if not _IDENTITY_QUERY_RE.search(transcript):
+        return response_text
+
+    if _MODEL_NATIVE_IDENTITY_RE.search(response_text):
+        return (
+            f"My name is {personality.display_name}. "
+            f"{personality.identity_summary}"
+        )
+
+    return response_text

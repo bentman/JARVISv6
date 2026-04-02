@@ -6,7 +6,7 @@ from uuid import uuid4
 from backend.app.artifacts.storage import write_turn_artifact
 from backend.app.artifacts.turn_artifact import TurnArtifact
 from backend.app.cognition.prompt_assembler import assemble_prompt
-from backend.app.cognition.responder import get_response
+from backend.app.cognition.responder import enforce_identity_response, get_response
 from backend.app.conversation.engine import ConversationEngine
 from backend.app.conversation.session_manager import Session, SessionManager
 from backend.app.conversation.states import ConversationState
@@ -50,6 +50,7 @@ def run_turn(
 
         engine.transition(ConversationState.RESPONDING)
         response = get_response(prompt, llm)
+        response = enforce_identity_response(transcript, response, personality)
 
         responded_at = _iso_now()
 
