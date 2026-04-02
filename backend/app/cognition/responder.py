@@ -13,6 +13,18 @@ _TONE_LINE_RE = re.compile(r"^\s*-\s*tone\s*:", re.IGNORECASE)
 _USER_TURN_RE = re.compile(r"^\s*User turn\s*:\s*(.*)$", re.IGNORECASE)
 _ASSISTANT_TAG_RE = re.compile(r"^\s*(assistant|response|reply|answer)\s*:\s*(.*)$", re.IGNORECASE)
 
+# Continuation-bleed markers: model invented the next user turn or a turn separator.
+# These truncate the response — everything from the marker onward is discarded.
+_CONTINUATION_BLEED_RE = re.compile(
+    r"^\s*(?:"
+    r"User\s*:"           # bare "User:" prefix
+    r"|Human\s*:"         # bare "Human:" prefix
+    r"|\[New turn[:\]]"   # "[New turn:]" or "[New turn]"
+    r"|\[Turn \d+"        # "[Turn N]" fabricated turn markers
+    r")",
+    re.IGNORECASE,
+)
+
 
 def _sanitize_response(raw_response: str) -> str:
     lines = raw_response.replace("\r\n", "\n").replace("\r", "\n").split("\n")
@@ -61,6 +73,12 @@ def _sanitize_response(raw_response: str) -> str:
             continue
         if re.search(r"\bText completion\b", stripped, flags=re.IGNORECASE):
             continue
+
+        # Defense-in-depth: truncate if the model bleeds into a fabricated next turn.
+        # Only applies after at least one response line has been collected so we do
+        # not accidentally truncate a legitimately short first line.
+        if cleaned and _CONTINUATION_BLEED_RE.match(stripped):
+            break
 
         cleaned.append(line)
 

@@ -28,6 +28,9 @@ def test_voice_turn_live() -> None:
     mic_ok, mic_reason = _has_input_device()
     assert mic_ok, f"[PREREQ FAILED] microphone: {mic_reason}"
 
+    print("[TURN 1] microphone input expected now")
+    print("[TURN 1] speak now: What is your name?")
+
     report = run_profiler()
     model_name = report.flags.stt_recommended_model
     local_model_dir = f"models/stt/{model_name}"

@@ -50,12 +50,12 @@ def test_multiturn_voice_session_live() -> None:
     memory = WorkingMemory(max_turns=5)
     print(f"[SESSION] opened: {session.session_id}")
 
-    print("[TURN 1] speak now: My codename is JARVIS.")
+    print("[TURN 1] speak now: What is your name?")
     response1 = run_voice_turn(report, personality, session=session, memory=memory)
     print(f"[TURN 1] response: {response1}")
     print(f"[TURN 1] memory_turns: {len(memory.get_context_turns())}")
 
-    print("[TURN 2] speak now: What codename did I give you?")
+    print("[TURN 2] speak now: Nothing else for today.")
     response2 = run_voice_turn(report, personality, session=session, memory=memory)
     print(f"[TURN 2] response: {response2}")
     print(f"[TURN 2] memory_turns: {len(memory.get_context_turns())}")

@@ -13,6 +13,11 @@ def assemble_prompt(
     personality: PersonalityProfile,
     context_turns: list[TurnSummary] | None = None,
 ) -> str:
+    system_line = (
+        f"[System: {personality.identity_summary}. Tone: {personality.tone}. "
+        "Respond in English only.]"
+    )
+
     if context_turns:
         prior_lines: list[str] = []
         for turn in context_turns:
@@ -21,16 +26,19 @@ def assemble_prompt(
 
         prior_block = "\n".join(prior_lines)
         return (
-            f"[System: {personality.identity_summary}. Tone: {personality.tone}.]\n\n"
+            f"{system_line}\n\n"
             "[Prior turns:]\n"
             f"{prior_block}\n\n"
-            f"User: {transcript}"
+            f"User: {transcript}\n"
+            "Assistant:"
         )
 
     return (
         "System context:\n"
         f"- identity_summary: {personality.identity_summary}\n"
-        f"- tone: {personality.tone}\n\n"
+        f"- tone: {personality.tone}\n"
+        "- response_language: english\n\n"
         "User turn:\n"
-        f"{transcript}"
+        f"{transcript}\n"
+        "Assistant:"
     )

@@ -29,14 +29,14 @@ def verify_model(local_dir: str, family: str = "stt") -> bool:
     return all((path / name).exists() for name in required_files)
 
 
-def download_model(hf_repo_id: str, local_dir: str) -> str:
+def download_model(hf_repo_id: str, local_dir: str, offline_only: bool = False) -> str:
     target = Path(local_dir)
     target.mkdir(parents=True, exist_ok=True)
     try:
         snapshot_download(
             repo_id=hf_repo_id,
             local_dir=str(target),
-            local_files_only=False,
+            local_files_only=offline_only,
         )
     except Exception as exc:
         raise ModelNotAvailableError(
@@ -45,10 +45,15 @@ def download_model(hf_repo_id: str, local_dir: str) -> str:
     return str(target)
 
 
-def ensure_model(hf_repo_id: str, local_dir: str, family: str = "stt") -> str:
+def ensure_model(
+    hf_repo_id: str,
+    local_dir: str,
+    family: str = "stt",
+    offline_only: bool = False,
+) -> str:
     if verify_model(local_dir, family=family):
         return local_dir
-    download_model(hf_repo_id=hf_repo_id, local_dir=local_dir)
+    download_model(hf_repo_id=hf_repo_id, local_dir=local_dir, offline_only=offline_only)
     if not verify_model(local_dir, family=family):
         raise ModelNotAvailableError(
             f"verify failed after download for repo '{hf_repo_id}' at '{local_dir}'"

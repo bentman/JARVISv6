@@ -15,6 +15,59 @@
 
 ## Entries
 
+- 2026-04-02 07:57
+  - Summary: Live/operator prompt consistency correction was completed by normalizing explicit microphone guidance and “speak now” phrase prompts across live runtime mic-input tests while preserving existing test intent, assertions, and acceptance criteria.
+  - Scope: backend/tests/runtime/test_slice1_stt_turn_live.py, backend/tests/runtime/test_slice2_tts_turn_live.py, backend/tests/runtime/test_slice3b_multiturn_voice_live.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/services/voice_service.py backend/tests/runtime`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_stt_turn_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice2_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3b_multiturn_voice_live.py -v -s`
+    ```text
+    PASS compile: Compiling 'backend/tests/runtime\\test_slice1_stt_turn_live.py'... | 'test_slice2_tts_turn_live.py'... | 'test_slice3b_multiturn_voice_live.py'...
+    PASS slice1 live: [TURN 1] speak now: What is your name? | 1 passed
+    PASS slice2 live: [TURN 1] speak now: What is your name? | 1 passed
+    PASS slice3b live: [TURN 1] speak now: What is your name? | [TURN 2] speak now: Nothing else for today. | 1 passed
+    ```
+
+- 2026-04-02 07:23
+  - Summary: HF local-runtime offline-only correction was completed by enforcing offline behavior in the local TTS runtime before any model-manager Hugging Face call and by adding offline/local-only resolution control in model manager so runtime paths fail closed to cache/local assets without Hub access.
+  - Scope: backend/app/models/manager.py, backend/app/runtimes/tts/local_runtime.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -c "from pathlib import Path; from backend.app.models.catalog import get_tts_model_entry; from backend.app.runtimes.tts.local_runtime import KokoroTTSRuntime; entry = get_tts_model_entry('kokoro-v1.0'); rt = KokoroTTSRuntime(model_name='kokoro-v1.0', device='cpu'); rt._ensure_pipeline(); print('pipeline_initialized:', rt._pipeline is not None); print('model_dir_exists:', Path(entry['local_dir']).exists());" 2>&1`
+    ```text
+    PASS runtime local init: pipeline_initialized: True
+    PASS runtime local assets: model_dir_exists: True
+    PASS warning boundary: no HF_TOKEN unauthenticated warning emitted
+    ```
+
+- 2026-04-02 06:58
+  - Summary: CUDA DLL discovery correction was completed by removing the unnecessary hardcoded CUDA path entries from `.env.example` and `.env`, and by adding Windows-only dynamic DLL directory registration in the STT runtime using host `CUDA_PATH` plus venv NVIDIA wheel bin paths derived from `sys.prefix` while preserving existing CPU fallback behavior.
+  - Scope: .env.example, .env, backend/app/runtimes/stt/local_runtime.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/runtimes/stt/local_runtime.py backend/app/runtimes/stt/stt_runtime.py`; `backend/.venv/Scripts/python -c "import os, sys; from pathlib import Path; from backend.app.runtimes.stt.local_runtime import FasterWhisperSTT; venv = Path(sys.prefix); print('cuda_path_env:', os.environ.get('CUDA_PATH')); print('venv_cublas_bin_exists:', (venv / 'Lib' / 'site-packages' / 'nvidia' / 'cublas' / 'bin').exists()); print('venv_cudnn_bin_exists:', (venv / 'Lib' / 'site-packages' / 'nvidia' / 'cudnn' / 'bin').exists()); print('venv_cuda_runtime_bin_exists:', (venv / 'Lib' / 'site-packages' / 'nvidia' / 'cuda_runtime' / 'bin').exists()); stt = FasterWhisperSTT(model_name='tiny', device='cuda'); print('stt_device_requested:', stt.device)"`
+    ```text
+    PASS compile: Compiling 'backend/app/runtimes/stt/local_runtime.py'...
+    PASS runtime proof: cuda_path_env: C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.2
+    PASS runtime proof: venv_cublas_bin_exists: True | venv_cudnn_bin_exists: True | venv_cuda_runtime_bin_exists: False
+    PASS runtime proof: stt_device_requested: cuda
+    ```
+
+- 2026-04-02 06:11
+  - Summary: Language-alignment bug-fix was completed by constraining the prompt contract to English responses while preserving deterministic assistant response boundaries and single-turn prompt format compatibility, and by forcing FasterWhisper transcription to English across both primary and CPU fallback paths.
+  - Scope: backend/app/cognition/prompt_assembler.py, backend/app/runtimes/stt/local_runtime.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/cognition/prompt_assembler.py backend/app/runtimes/stt/local_runtime.py`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice3a_session_continuity_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3a_session_continuity_runtime.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3b_multiturn_voice_live.py -v -s`
+    ```text
+    PASS compile: Compiling 'backend/app/cognition/prompt_assembler.py'... | Compiling 'backend/app/runtimes/stt/local_runtime.py'...
+    PASS unit: 17 passed in 0.18s
+    PASS runtime 3A: backend/tests/runtime/test_slice3a_session_continuity_runtime.py::test_session_continuity_runtime ... PASSED | 1 passed in 19.43s
+    PASS runtime 3B live: backend/tests/runtime/test_slice3b_multiturn_voice_live.py::test_multiturn_voice_session_live ... PASSED | 1 passed in 157.18s
+    ```
+
+- 2026-04-02 05:36
+  - Summary: Correction entry added after validating the Architect-applied prompt-continuation bleed bug-fix; multi-turn prompt assembly now includes an explicit assistant-turn anchor and responder sanitization truncates fabricated next-turn continuation markers (for example `[New turn:] User:`) before user-facing output.
+  - Scope: backend/app/cognition/prompt_assembler.py, backend/app/cognition/responder.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/cognition/prompt_assembler.py backend/app/cognition/responder.py`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice3a_session_continuity_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3a_session_continuity_runtime.py -v -s`
+    ```text
+    PASS compile: Compiling 'backend/app/cognition/prompt_assembler.py'... | Compiling 'backend/app/cognition/responder.py'...
+    PASS unit: 17 passed in 0.41s
+    PASS runtime: backend/tests/runtime/test_slice3a_session_continuity_runtime.py::test_session_continuity_runtime ... PASSED | 1 passed in 19.99s
+    ```
+
 - 2026-04-01 15:30
   - Summary: Sub-slice 3B.3 Fail-Closed Behavior, Runtime-Only Acceptance, and Governance Gates was completed by validating the live spoken path as the runtime-only acceptance surface, confirming explicit live-boundary fail-closed behavior remained in effect, and closing 3B governance in `CHANGE_LOG.md` while leaving `SYSTEM_INVENTORY.md` unchanged for Architect-reviewed follow-up.
   - Scope: CHANGE_LOG.md

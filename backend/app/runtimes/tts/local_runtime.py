@@ -143,19 +143,19 @@ class KokoroTTSRuntime(TTSBase):
                     f"KokoroTTSRuntime: catalog missing local_dir for model '{self.model_name}'"
                 )
 
+            # Runtime path is local/offline by contract.
+            os.environ["HF_HUB_OFFLINE"] = "1"
+
             resolved_local_dir = ensure_model(
                 hf_repo_id=hf_repo_id,
                 local_dir=local_dir,
                 family="tts",
+                offline_only=True,
             )
             if not Path(resolved_local_dir).exists():
                 raise RuntimeError(
                     f"KokoroTTSRuntime: ensured model directory not found: {resolved_local_dir}"
                 )
-
-            # Runtime path is local-first after model acquisition/ensure.
-            # Force HF Hub offline mode before third-party Kokoro/HF-backed loading.
-            os.environ["HF_HUB_OFFLINE"] = "1"
 
             if self.device.lower() == "cuda":
                 try:
