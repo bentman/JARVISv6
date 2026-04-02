@@ -15,6 +15,101 @@
 
 ## Entries
 
+- 2026-04-01 15:30
+  - Summary: Sub-slice 3B.3 Fail-Closed Behavior, Runtime-Only Acceptance, and Governance Gates was completed by validating the live spoken path as the runtime-only acceptance surface, confirming explicit live-boundary fail-closed behavior remained in effect, and closing 3B governance in `CHANGE_LOG.md` while leaving `SYSTEM_INVENTORY.md` unchanged for Architect-reviewed follow-up.
+  - Scope: CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3b_multiturn_voice_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3a_session_continuity_runtime.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice2_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope runtime`
+    ```text
+    PASS 3B.2 live runtime: [STATE] LISTENING → TRANSCRIBING | [TRANSCRIPT] What codename did I give you? | [TURN 2] memory_turns: 2 | PASSED | 1 passed
+    PASS 3A regression runtime: backend/tests/runtime/test_slice3a_session_continuity_runtime.py::test_session_continuity_runtime ... PASSED | 1 passed
+    PASS slice2 regression runtime: backend/tests/runtime/test_slice2_tts_turn_live.py::test_spoken_voice_turn_live ... PASSED | 1 passed
+    PASS runtime harness: PASS: runtime: 5 tests | RUNTIME: PASS | [INVARIANTS] RUNTIME=PASS | [PASS] JARVISv6 backend is validated!
+    ```
+
+- 2026-04-01 15:02
+  - Summary: Sub-slice 3B.2 One Live Multi-Turn Spoken Validation Path was completed by reverting unproven `voice_service.py` hardening to the stable 3B.1 direct capture/transcribe flow, then applying a bounded live-path fix across STT runtime selection/capture and TTS playback stream release so the second turn reached transcript emission and completion in the live runtime test.
+  - Scope: backend/app/services/voice_service.py, backend/app/runtimes/stt/stt_runtime.py, backend/app/runtimes/tts/playback.py
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3b_multiturn_voice_live.py -v -s`
+    ```text
+    [TURN 2] speak now: What codename did I give you?
+    [STATE] IDLE → LISTENING
+    [LIVE INPUT] awaiting microphone speech...
+    [STATE] LISTENING → TRANSCRIBING
+    [TRANSCRIPT] What is your code name?
+    [TURN 2] memory_turns: 2
+    PASSED
+    1 passed in 135.55s
+    ```
+
+- 2026-04-01 12:56
+  - Summary: Slice 2 TTS unit-test alignment bug-fix was completed by updating `backend/tests/unit/test_slice2_tts_turn_units.py` to match the approved profiler-first TTS authority contract, with selector tests targeting the current selector/runtime interface and voice-service tests patching the current execution flow.
+  - Scope: backend/tests/unit/test_slice2_tts_turn_units.py
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice2_tts_turn_units.py -q`
+    ```text
+    PASS targeted unit suite: ........... [100%]
+    PASS result: 11 passed in 0.69s
+    ```
+
+- 2026-04-01 11:58
+  - Summary: STT authority-alignment bug-fix was completed by updating capability schema/profiler/selector wiring so profiler now owns STT runtime/model/device recommendation, `select_stt_runtime(report)` consumes profiler-owned STT recommendation fields, and `voice_service.py` no longer hardcodes STT runtime family or ad hoc STT device selection while `config/models/stt.yaml` remains catalog/default metadata authority.
+  - Scope: backend/app/core/capabilities.py, backend/app/hardware/profiler.py, backend/app/runtimes/stt/stt_runtime.py, backend/app/services/voice_service.py
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/core/capabilities.py backend/app/hardware/profiler.py backend/app/runtimes/stt/stt_runtime.py backend/app/services/voice_service.py`; `backend/.venv/Scripts/python -c "from backend.app.hardware.profiler import run_profiler; r=run_profiler(); print('stt_runtime_field_present:', hasattr(r.flags, 'stt_recommended_runtime')); print('stt_model_field_present:', hasattr(r.flags, 'stt_recommended_model')); print('stt_device_field_present:', hasattr(r.flags, 'stt_recommended_device'))"`; `backend/.venv/Scripts/python -c "from backend.app.hardware.profiler import run_profiler; from backend.app.runtimes.stt.stt_runtime import select_stt_runtime; rt=select_stt_runtime(run_profiler()); print('selected_type:', type(rt).__name__ if rt else None); print('selected_device:', getattr(rt, 'device', None))"`; `backend/.venv/Scripts/python -c "from backend.app.services.voice_service import run_voice_turn; print('run_voice_turn importable:', callable(run_voice_turn))"`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice1_stt_turn_units.py -q`
+    ```text
+    PASS compile: Compiling 'backend/app/core/capabilities.py'... | 'backend/app/hardware/profiler.py'... | 'backend/app/runtimes/stt/stt_runtime.py'... | 'backend/app/services/voice_service.py'...
+    PASS profiler fields: stt_runtime_field_present: True | stt_model_field_present: True | stt_device_field_present: True
+    PASS selector: selected_type: FasterWhisperSTT | selected_device: cuda
+    PASS import: run_voice_turn importable: True
+    PASS unit tests: 15 passed in 0.28s
+    AUTHORITY runtime family: profiler-owned via report.flags.stt_recommended_runtime
+    AUTHORITY model default: profiler-owned runtime-path recommendation via report.flags.stt_recommended_model (config/catalog still defines available model entries)
+    AUTHORITY device selection: profiler-owned via report.flags.stt_recommended_device
+    ```
+
+- 2026-04-01 11:43
+  - Summary: TTS hardware-selection authority bug-fix was completed by updating capability schema/profiler/runtime wiring so profiler now owns TTS runtime/model/device recommendation, `select_tts_runtime(report)` consumes profiler-owned TTS recommendation fields, `local_runtime.py` is execution-only for normal runtime flow, voice default remains catalog-driven, and `config/models/tts.yaml:runtimes.kokoro.default_device` was removed after device authority moved to profiler.
+  - Scope: backend/app/core/capabilities.py, backend/app/hardware/profiler.py, backend/app/runtimes/tts/tts_runtime.py, backend/app/runtimes/tts/local_runtime.py, config/models/tts.yaml
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/core/capabilities.py backend/app/hardware/profiler.py backend/app/runtimes/tts/tts_runtime.py backend/app/runtimes/tts/local_runtime.py`; `backend/.venv/Scripts/python -c "from backend.app.hardware.profiler import run_profiler; r=run_profiler(); print('tts_runtime_field_present:', hasattr(r.flags, 'tts_recommended_runtime')); print('tts_model_field_present:', hasattr(r.flags, 'tts_recommended_model')); print('tts_device_field_present:', hasattr(r.flags, 'tts_recommended_device'))"`; `backend/.venv/Scripts/python -c "from backend.app.hardware.profiler import run_profiler; from backend.app.runtimes.tts.tts_runtime import select_tts_runtime; rt=select_tts_runtime(run_profiler()); print('selected_type:', type(rt).__name__ if rt else None); print('selected_device:', getattr(rt, 'device', None))"`; `backend/.venv/Scripts/python -c "from backend.app.runtimes.tts.local_runtime import LocalTTSRuntime, KokoroTTSRuntime; print('LocalTTSRuntime importable:', callable(LocalTTSRuntime)); print('KokoroTTSRuntime importable:', callable(KokoroTTSRuntime))"`
+    ```text
+    PASS compile: Compiling 'backend/app/core/capabilities.py'... | 'backend/app/hardware/profiler.py'... | 'backend/app/runtimes/tts/tts_runtime.py'... | 'backend/app/runtimes/tts/local_runtime.py'...
+    PASS profiler fields: tts_runtime_field_present: True | tts_model_field_present: True | tts_device_field_present: True
+    PASS runtime selection: selected_type: KokoroTTSRuntime | selected_device: cuda
+    PASS compatibility: LocalTTSRuntime importable: True | KokoroTTSRuntime importable: True
+    ```
+
+- 2026-04-01 10:01
+  - Summary: Kokoro TTS runtime/config correction was completed by updating `config/models/tts.yaml` and `backend/app/runtimes/tts/local_runtime.py` to remove hardcoded defaults, make config authoritative for model/voice/device defaults, expose `LocalTTSRuntime` as the stable repo-facing runtime name, and preserve `KokoroTTSRuntime` import compatibility.
+  - Scope: config/models/tts.yaml, backend/app/runtimes/tts/local_runtime.py
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/runtimes/tts/local_runtime.py`; `backend/.venv/Scripts/python -c "from backend.app.runtimes.tts.local_runtime import LocalTTSRuntime, KokoroTTSRuntime; print('LocalTTSRuntime importable:', callable(LocalTTSRuntime)); print('KokoroTTSRuntime importable:', callable(KokoroTTSRuntime))"`
+    ```text
+    PASS compile: Compiling 'backend/app/runtimes/tts/local_runtime.py'...
+    PASS import: LocalTTSRuntime importable: True
+    PASS import: KokoroTTSRuntime importable: True
+    CONFIG default keys in use: model -> config/models/tts.yaml:models (single unambiguous model key)
+    CONFIG default keys in use: voice -> config/models/tts.yaml:models.<model>.default_voice
+    CONFIG default keys in use: device -> config/models/tts.yaml:runtimes.kokoro.default_device
+    ```
+
+- 2026-04-01 08:39
+  - Summary: !BLOCKED! Sub-slice 3B.2 One Live Multi-Turn Spoken Validation Path was attempted by creating `backend/tests/runtime/test_slice3b_multiturn_voice_live.py`, adding operator-facing live prompts in the test and an explicit live capture cue in `backend/app/services/voice_service.py`; live runtime remained blocked because turn 1 completed but turn 2 repeatedly reached the live capture/transcribe boundary without deterministic transcript/completion, and speculative capture-lifecycle edits were attempted then reverted.
+  - Scope: backend/tests/runtime/test_slice3b_multiturn_voice_live.py, backend/app/services/voice_service.py, backend/app/runtimes/stt/stt_runtime.py
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3b_multiturn_voice_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3a_session_continuity_runtime.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice2_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope runtime`; `backend/.venv/Scripts/python -m compileall backend/app/runtimes/stt/stt_runtime.py backend/app/services/voice_service.py`; `backend/.venv/Scripts/python -c "from backend.app.services.voice_service import run_voice_turn; print('run_voice_turn importable:', callable(run_voice_turn))"`
+    ```text
+    ATTEMPTED 3B.2 live path: [SESSION] opened ... | [TURN 1] memory_turns: 1 | [TURN 2] speak now ... | [STATE] IDLE → LISTENING | [LIVE INPUT] awaiting microphone speech... | [STATE] LISTENING → TRANSCRIBING (no deterministic turn-2 completion observed)
+    OBSERVED runtime boundary instability during related runtime runs: RuntimeError: OllamaLLM: no response from http://localhost:11434
+    ATTEMPTED narrow capture-lifecycle correction (not resolving blocker): added sd.stop() around capture in stt_runtime.py and per-call UUID utterance filename in voice_service.py
+    REVERTED speculative capture-lifecycle edits to restore minimal stable state: stt_runtime.py sd.stop() additions removed; voice_service.py capture path restored to data/temp/utterance.wav
+    RESTORED baseline: 3B.1 continuity wiring retained + operator cues retained; STATUS: 3B.2 blocked / not complete
+    ```
+
+- 2026-04-01 07:02
+  - Summary: Sub-slice 3B.1 Reuse the 3A Continuity Executor from the Live Voice Path was completed by modifying `backend/app/services/voice_service.py` so `run_voice_turn(...)` accepts optional `session` and `memory`, keeps the live ingress path and transcript logging in `voice_service.py`, hands transcript continuity execution to `run_turn(..., input_modality="voice")`, and preserves TTS/playback behavior in `voice_service.py`.
+  - Scope: backend/app/services/voice_service.py
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/services/voice_service.py`; `backend/.venv/Scripts/python -c "from backend.app.services.voice_service import run_voice_turn; print('run_voice_turn importable:', callable(run_voice_turn))"`
+    ```text
+    PASS compile: Compiling 'backend/app/services/voice_service.py'...
+    PASS import: run_voice_turn importable: True
+    ```
+
 - 2026-04-01 06:31
   - Summary: Sub-slice 3A.6 Deterministic Validation, Regression, and Inventory Gates was completed by creating `backend/tests/unit/test_slice3a_session_continuity_units.py` and `backend/tests/runtime/test_slice3a_session_continuity_runtime.py`, adding deterministic non-interactive 3A unit/runtime coverage; an in-scope unit test correction was applied and rerun to pass.
   - Scope: backend/tests/unit/test_slice3a_session_continuity_units.py, backend/tests/runtime/test_slice3a_session_continuity_runtime.py

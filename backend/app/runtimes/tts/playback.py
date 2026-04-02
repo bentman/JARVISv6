@@ -30,5 +30,11 @@ def play_audio(audio_path: str) -> None:
         raise RuntimeError("play_audio: no output device available")
 
     data, sample_rate = sf.read(str(path))
-    sd.play(data, sample_rate)
-    sd.wait()
+    try:
+        sd.play(data, sample_rate)
+        sd.wait()
+    finally:
+        try:
+            sd.stop()
+        except Exception as exc:
+            raise RuntimeError(f"play_audio: output stream release failed ({exc})") from exc

@@ -129,13 +129,20 @@ General:
 
 Backend:
 
-- Run Python validation via `backend/.venv/Scripts/python`.
-- Primary harness: `scripts/validate_backend.py`.
-- Tests are under `backend/tests/runtime`, `backend/tests/unit` (and `backend/tests/integration`, and `backend/tests/agentic` allowed).
-- Standard test command pattern:
-  - Targeted first: `backend/.venv/Scripts/python -m pytest tests/unit -q` (or matching integration/agentic path for scope)
-  - Full suite when required by scope: `backend/.venv/Scripts/python -m pytest tests/`
-- Coverage expectation: maintain pytest coverage for almost every backend `*.py` file; minimum import/structure test, preferably function/behavior test.
+Use this:
+
+* Run backend Python via `backend/.venv/Scripts/python`.
+* Prefer targeted validation first; expand only if scope requires it.
+* Primary harness: `backend/.venv/Scripts/python scripts/validate_backend.py --scope <scope>`; use `--scope all` only when required.
+* Test roots:
+  * `backend/tests/unit`
+  * `backend/tests/runtime`
+  * `backend/tests/integration`
+  * `backend/tests/agentic`
+* Standard pattern:
+  * targeted file/dir first: `backend/.venv/Scripts/python -m pytest <target> ...`
+  * broad suite only when required by scope
+* Coverage expectation: backend `*.py` files should have pytest coverage; minimum import/structure, preferably behavior.
 
 Frontend:
 

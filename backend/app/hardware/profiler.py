@@ -88,34 +88,43 @@ def classify_device_class(
     return "desktop"
 
 
-def _recommend_stt(profile: HardwareProfile, requires_degraded_mode: bool) -> tuple[str, str]:
+def _recommend_stt(profile: HardwareProfile, requires_degraded_mode: bool) -> tuple[str, str, str]:
     """Return Slice 0.9 STT runtime/model recommendation from profile inputs."""
 
     if requires_degraded_mode:
-        return "faster-whisper", "whisper-tiny"
+        return "faster-whisper", "whisper-tiny", "cpu"
 
     if (
         (profile.gpu_vendor or "").lower() == "nvidia"
         and bool(profile.cuda_available)
         and profile.device_class == "desktop"
     ):
-        return "faster-whisper", "whisper-large-v3-turbo"
+        return "faster-whisper", "whisper-large-v3-turbo", "cuda"
 
     if profile.os == "Darwin" and profile.arch.upper() in {"ARM64", "AARCH64"}:
-        return "whisper.cpp", "whisper-large-v3-turbo"
+        return "whisper.cpp", "whisper-large-v3-turbo", "cpu"
 
     if (profile.npu_vendor or "").lower() == "intel":
-        return "openvino-whisper", "whisper-small"
+        return "openvino-whisper", "whisper-small", "cpu"
 
     if (profile.npu_vendor or "").lower() == "qualcomm":
-        return "onnx-whisper", "whisper-small"
+        return "onnx-whisper", "whisper-small", "cpu"
 
     if not bool(profile.gpu_available):
         if float(profile.memory_total_gb) >= 16.0:
-            return "faster-whisper", "whisper-small"
-        return "faster-whisper", "whisper-base"
+            return "faster-whisper", "whisper-small", "cpu"
+        return "faster-whisper", "whisper-base", "cpu"
 
-    return "faster-whisper", "whisper-small"
+    return "faster-whisper", "whisper-small", "cpu"
+
+
+def _recommend_tts(profile: HardwareProfile) -> tuple[str, str, str]:
+    """Return TTS runtime/model/device recommendation from profile inputs."""
+
+    runtime = "kokoro"
+    model = "kokoro-v1.0"
+    device = "cuda" if bool(profile.cuda_available) else "cpu"
+    return runtime, model, device
 
 
 def derive_capability_flags(profile: HardwareProfile) -> CapabilityFlags:
@@ -130,7 +139,8 @@ def derive_capability_flags(profile: HardwareProfile) -> CapabilityFlags:
     requires_degraded_mode = (memory_total_gb < 4.0) or (
         (not gpu_available) and (memory_total_gb < 8.0)
     )
-    stt_runtime, stt_model = _recommend_stt(profile, requires_degraded_mode)
+    stt_runtime, stt_model, stt_device = _recommend_stt(profile, requires_degraded_mode)
+    tts_runtime, tts_model, tts_device = _recommend_tts(profile)
 
     # `profile.cuda_available` is currently a host-level CUDA/NVIDIA presence
     # signal. Runtime-specific CUDA usability must still be decided by each
@@ -147,6 +157,10 @@ def derive_capability_flags(profile: HardwareProfile) -> CapabilityFlags:
         requires_degraded_mode=requires_degraded_mode,
         stt_recommended_runtime=stt_runtime,
         stt_recommended_model=stt_model,
+        stt_recommended_device=stt_device,
+        tts_recommended_runtime=tts_runtime,
+        tts_recommended_model=tts_model,
+        tts_recommended_device=tts_device,
     )
 
 

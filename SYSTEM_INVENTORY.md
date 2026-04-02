@@ -25,6 +25,18 @@
 
 ## Inventory
 
+- Capability: Live Multi-Turn Spoken Continuity (Slice 3B) verified - 2026-04-01 19:01
+  - State: Verified
+  - Location: `backend/app/services/voice_service.py`, `backend/app/runtimes/stt/stt_runtime.py`, `backend/app/runtimes/tts/playback.py`, `backend/tests/runtime/test_slice3b_multiturn_voice_live.py`
+  - Validation: `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3b_multiturn_voice_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3a_session_continuity_runtime.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice2_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope runtime`
+  - Notes: Live two-turn spoken continuity on top of the Slice 3A path is runtime-verified, with turn 2 transcript/completion and runtime-only acceptance evidence recorded.
+
+- Capability: Deterministic Session Continuity (Slice 3A) verified - 2026-04-01 19:01
+  - State: Verified
+  - Location: `backend/app/conversation/session_manager.py`, `backend/app/artifacts/turn_artifact.py`, `backend/app/artifacts/storage.py`, `backend/app/memory/working.py`, `backend/app/memory/write_policy.py`, `backend/app/services/turn_service.py`, `backend/app/cognition/prompt_assembler.py`, `backend/tests/unit/test_slice3a_session_continuity_units.py`, `backend/tests/runtime/test_slice3a_session_continuity_runtime.py`
+  - Validation: `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3a_session_continuity_runtime.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3b_multiturn_voice_live.py -v -s`
+  - Notes: Session lifecycle, canonical artifact persistence, bounded working memory, explicit write policy, and transcript-bound continuity executor are verified as the Slice 3 continuity authority.
+
 - Capability: Spoken Response / Local TTS via Kokoro with response sanitation and local-first HF runtime (Slice 2) verified - 2026-03-30 18:27
   - State: Verified
   - Location: `config/models/tts.yaml`, `backend/app/models/catalog.py`, `backend/app/models/manager.py`, `scripts/ensure_models.py`, `backend/app/runtimes/tts/base.py`, `backend/app/runtimes/tts/local_runtime.py`, `backend/app/runtimes/tts/tts_runtime.py`, `backend/app/runtimes/tts/playback.py`, `backend/app/services/voice_service.py`, `backend/app/cognition/responder.py`, `backend/tests/runtime/test_slice2_tts_turn_live.py`, `backend/tests/runtime/test_slice1_stt_turn_live.py`

@@ -46,8 +46,12 @@ class CapabilityFlags:
     supports_realtime_voice: bool
     supports_desktop_shell: bool
     requires_degraded_mode: bool
-    stt_recommended_runtime: str
-    stt_recommended_model: str
+    stt_recommended_runtime: str = "faster-whisper"
+    stt_recommended_model: str = "whisper-base"
+    stt_recommended_device: str = "cpu"
+    tts_recommended_runtime: str = "kokoro"
+    tts_recommended_model: str = "kokoro-v1.0"
+    tts_recommended_device: str = "cpu"
 
 
 @dataclass(slots=True)

@@ -4,9 +4,49 @@ import os
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from backend.app.models.catalog import get_tts_model_entry
 from backend.app.models.manager import ModelNotAvailableError, ensure_model
 from backend.app.runtimes.tts.base import TTSBase
+
+
+def _load_tts_catalog() -> dict[str, Any]:
+    config_path = Path("config/models/tts.yaml")
+    if not config_path.exists():
+        raise RuntimeError(f"KokoroTTSRuntime: missing config file: {config_path}")
+
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise RuntimeError("KokoroTTSRuntime: invalid tts config format")
+    return data
+
+
+def _resolve_default_model_name() -> str:
+    config = _load_tts_catalog()
+    models = config.get("models")
+    if not isinstance(models, dict) or not models:
+        raise RuntimeError("KokoroTTSRuntime: tts config has no models")
+
+    if len(models) != 1:
+        raise RuntimeError(
+            "KokoroTTSRuntime: ambiguous default model (multiple models defined)"
+        )
+
+    model_name = next(iter(models.keys()))
+    if not isinstance(model_name, str) or not model_name.strip():
+        raise RuntimeError("KokoroTTSRuntime: invalid default model name in config")
+    return model_name
+
+
+def _resolve_default_voice(model_name: str) -> str:
+    entry = get_tts_model_entry(model_name)
+    default_voice = entry.get("default_voice")
+    if not isinstance(default_voice, str) or not default_voice.strip():
+        raise RuntimeError(
+            f"KokoroTTSRuntime: catalog missing default_voice for model '{model_name}'"
+        )
+    return default_voice
 
 
 def _is_cuda_runtime_error(exc: BaseException) -> bool:
@@ -25,12 +65,15 @@ def _is_cuda_runtime_error(exc: BaseException) -> bool:
 class KokoroTTSRuntime(TTSBase):
     def __init__(
         self,
-        model_name: str = "kokoro-v1.0",
-        voice: str = "af_bella",
+        model_name: str | None = None,
+        voice: str | None = None,
         device: str = "cpu",
     ) -> None:
-        self.model_name = model_name
-        self.voice = voice
+        resolved_model_name = model_name if model_name is not None else _resolve_default_model_name()
+        resolved_voice = voice if voice is not None else _resolve_default_voice(resolved_model_name)
+
+        self.model_name = resolved_model_name
+        self.voice = resolved_voice
         self.device = device
         self._pipeline: Any | None = None
 
@@ -132,7 +175,6 @@ class KokoroTTSRuntime(TTSBase):
             raise RuntimeError(f"KokoroTTSRuntime: synthesis failed ({exc})") from exc
         except Exception as exc:
             raise RuntimeError(f"KokoroTTSRuntime: synthesis failed ({exc})") from exc
-
     def _extract_audio(self, result: Any) -> Any:
         try:
             import numpy as np
@@ -184,3 +226,6 @@ class KokoroTTSRuntime(TTSBase):
             return str(out_path)
         except Exception as exc:
             raise RuntimeError(f"KokoroTTSRuntime: synthesis failed ({exc})") from exc
+
+
+LocalTTSRuntime = KokoroTTSRuntime

@@ -2,17 +2,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from backend.app.cognition.prompt_assembler import assemble_prompt
-from backend.app.cognition.responder import get_response
 from backend.app.conversation.engine import ConversationEngine
+from backend.app.conversation.session_manager import Session
 from backend.app.conversation.states import ConversationState
 from backend.app.core.capabilities import FullCapabilityReport
+from backend.app.memory.working import WorkingMemory
 from backend.app.personality.schema import PersonalityProfile
-from backend.app.routing.runtime_selector import select_llm_runtime
-from backend.app.runtimes.stt.local_runtime import FasterWhisperSTT
-from backend.app.runtimes.stt.stt_runtime import capture_utterance
+from backend.app.runtimes.stt.stt_runtime import capture_utterance, select_stt_runtime
 from backend.app.runtimes.tts.playback import play_audio
 from backend.app.runtimes.tts.tts_runtime import select_tts_runtime
+from backend.app.services.turn_service import run_turn
 
 
 def ensure_temp_dir() -> str:
@@ -21,7 +20,13 @@ def ensure_temp_dir() -> str:
     return str(path)
 
 
-def run_voice_turn(report: FullCapabilityReport, personality: PersonalityProfile) -> str:
+def run_voice_turn(
+    report: FullCapabilityReport,
+    personality: PersonalityProfile,
+    *,
+    session: Session | None = None,
+    memory: WorkingMemory | None = None,
+) -> str:
     engine = ConversationEngine(report, personality)
 
     def _fail(step_name: str, exc: Exception) -> None:
@@ -33,6 +38,7 @@ def run_voice_turn(report: FullCapabilityReport, personality: PersonalityProfile
 
     try:
         engine.transition(ConversationState.LISTENING)
+        print("[LIVE INPUT] awaiting microphone speech...")
 
         temp_dir = ensure_temp_dir()
         audio_path = capture_utterance(
@@ -41,21 +47,20 @@ def run_voice_turn(report: FullCapabilityReport, personality: PersonalityProfile
         )
 
         engine.transition(ConversationState.TRANSCRIBING)
-        stt = FasterWhisperSTT(
-            report.flags.stt_recommended_model,
-            device="cuda" if report.profile.cuda_available else "cpu",
-        )
+        stt = select_stt_runtime(report)
+        if stt is None:
+            raise RuntimeError("run_voice_turn: no STT runtime available")
         transcript = stt.transcribe(audio_path)
         print(f"[TRANSCRIPT] {transcript}")
 
-        engine.transition(ConversationState.REASONING)
-        llm = select_llm_runtime()
-        print(f"[LLM RUNTIME] {type(llm).__name__}")
-
-        prompt = assemble_prompt(transcript, personality)
-
-        engine.transition(ConversationState.RESPONDING)
-        response = get_response(prompt, llm)
+        response = run_turn(
+            report,
+            personality,
+            transcript,
+            session=session,
+            memory=memory,
+            input_modality="voice",
+        )
         print(f"[RESPONSE] {response}")
 
         engine.transition(ConversationState.SPEAKING)

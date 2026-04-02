@@ -94,25 +94,27 @@ def test_kokoro_tts_runtime_is_available(monkeypatch: pytest.MonkeyPatch) -> Non
 
 def test_tts_runtime_selector_returns_none_when_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeRuntime:
-        def __init__(self, device: str = "cpu") -> None:
+        def __init__(self, model_name: str, device: str = "cpu") -> None:
+            self.model_name = model_name
             self.device = device
 
         def is_available(self) -> bool:
             return False
 
-    monkeypatch.setattr("backend.app.runtimes.tts.tts_runtime.KokoroTTSRuntime", FakeRuntime)
+    monkeypatch.setattr("backend.app.runtimes.tts.tts_runtime.LocalTTSRuntime", FakeRuntime)
     assert select_tts_runtime(_report()) is None
 
 
 def test_tts_runtime_selector_returns_instance_when_available(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeRuntime:
-        def __init__(self, device: str = "cpu") -> None:
+        def __init__(self, model_name: str, device: str = "cpu") -> None:
+            self.model_name = model_name
             self.device = device
 
         def is_available(self) -> bool:
             return True
 
-    monkeypatch.setattr("backend.app.runtimes.tts.tts_runtime.KokoroTTSRuntime", FakeRuntime)
+    monkeypatch.setattr("backend.app.runtimes.tts.tts_runtime.LocalTTSRuntime", FakeRuntime)
     selected = select_tts_runtime(_report())
     assert isinstance(selected, FakeRuntime)
 
@@ -142,19 +144,13 @@ def test_voice_service_degraded_mode(monkeypatch: pytest.MonkeyPatch, capsys: py
             self.transitions.append(new_state.name)
 
     class FakeSTT:
-        def __init__(self, model_name: str, device: str) -> None:
-            self.model_name = model_name
-            self.device = device
-
         def transcribe(self, audio_path: str) -> str:
             return "test transcript"
 
     monkeypatch.setattr(voice_service, "ConversationEngine", FakeEngine)
     monkeypatch.setattr(voice_service, "capture_utterance", lambda output_path, duration_seconds: output_path)
-    monkeypatch.setattr(voice_service, "FasterWhisperSTT", FakeSTT)
-    monkeypatch.setattr(voice_service, "select_llm_runtime", lambda: object())
-    monkeypatch.setattr(voice_service, "assemble_prompt", lambda transcript, personality: "prompt")
-    monkeypatch.setattr(voice_service, "get_response", lambda prompt, llm: "unit response")
+    monkeypatch.setattr(voice_service, "select_stt_runtime", lambda report: FakeSTT())
+    monkeypatch.setattr(voice_service, "run_turn", lambda report, personality, transcript, session=None, memory=None, input_modality="voice": "unit response")
     monkeypatch.setattr(voice_service, "select_tts_runtime", lambda report: None)
 
     response = voice_service.run_voice_turn(_report(), _personality())
@@ -183,10 +179,6 @@ def test_voice_service_speaking_state_transition(monkeypatch: pytest.MonkeyPatch
             self.transitions.append(new_state.name)
 
     class FakeSTT:
-        def __init__(self, model_name: str, device: str) -> None:
-            self.model_name = model_name
-            self.device = device
-
         def transcribe(self, audio_path: str) -> str:
             return "test transcript"
 
@@ -196,10 +188,8 @@ def test_voice_service_speaking_state_transition(monkeypatch: pytest.MonkeyPatch
 
     monkeypatch.setattr(voice_service, "ConversationEngine", FakeEngine)
     monkeypatch.setattr(voice_service, "capture_utterance", lambda output_path, duration_seconds: output_path)
-    monkeypatch.setattr(voice_service, "FasterWhisperSTT", FakeSTT)
-    monkeypatch.setattr(voice_service, "select_llm_runtime", lambda: object())
-    monkeypatch.setattr(voice_service, "assemble_prompt", lambda transcript, personality: "prompt")
-    monkeypatch.setattr(voice_service, "get_response", lambda prompt, llm: "unit response")
+    monkeypatch.setattr(voice_service, "select_stt_runtime", lambda report: FakeSTT())
+    monkeypatch.setattr(voice_service, "run_turn", lambda report, personality, transcript, session=None, memory=None, input_modality="voice": "unit response")
     monkeypatch.setattr(voice_service, "select_tts_runtime", lambda report: FakeTTS())
     monkeypatch.setattr(voice_service, "play_audio", lambda _audio_path: None)
 
