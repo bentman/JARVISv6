@@ -15,6 +15,17 @@
 
 ## Entries
 
+- 2026-04-03 10:52
+  - Summary: Slice 4 unit-test housekeeping was completed by consolidating all Slice 4 unit coverage into `backend/tests/unit/test_slice4_interruption_units.py` and retiring the redundant per-sub-slice Slice 4 unit test files.
+  - Scope: backend/tests/unit/test_slice4_interruption_units.py, backend/tests/unit/test_slice4_1_interruption_contract_units.py, backend/tests/unit/test_slice4_2_barge_in_detector_units.py, backend/tests/unit/test_slice4_3_interruptible_playback_units.py, backend/tests/unit/test_slice4_4_interruptible_voice_orchestration_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice4_interruption_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit -q -k "slice4"`
+    ```text
+    ........................... [100%]
+    27 passed in 0.77s
+    ........................... [100%]
+    27 passed, 52 deselected in 0.61s
+    ```
+
 - 2026-04-03 09:44
   - Summary: The playback helper double-stop behavior was corrected by removing redundant body-level `sd.stop()` calls from `play_audio_interruptible(...)` and tightening the related unit proof to match the intended stop-path behavior.
   - Scope: backend/app/runtimes/tts/playback.py, backend/tests/unit/test_slice4_3_interruptible_playback_units.py, CHANGE_LOG.md

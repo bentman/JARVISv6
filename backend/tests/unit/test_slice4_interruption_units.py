@@ -176,6 +176,24 @@ def test_engine_interrupted_to_responding_blocked() -> None:
         engine.transition(ConversationState.RESPONDING)
 
 
+def test_engine_interrupted_to_speaking_blocked() -> None:
+    engine = ConversationEngine(_report(), _personality())
+    engine.transition(ConversationState.LISTENING)
+    engine.transition(ConversationState.SPEAKING)
+    engine.transition(ConversationState.INTERRUPTED)
+    with pytest.raises(RuntimeError, match="illegal transition INTERRUPTED"):
+        engine.transition(ConversationState.SPEAKING)
+
+
+def test_engine_interrupted_to_failed_blocked() -> None:
+    engine = ConversationEngine(_report(), _personality())
+    engine.transition(ConversationState.LISTENING)
+    engine.transition(ConversationState.SPEAKING)
+    engine.transition(ConversationState.INTERRUPTED)
+    with pytest.raises(RuntimeError, match="illegal transition INTERRUPTED"):
+        engine.transition(ConversationState.FAILED)
+
+
 def test_engine_recovering_to_idle_blocked() -> None:
     engine = ConversationEngine(_report(), _personality())
     engine.transition(ConversationState.LISTENING)
@@ -184,6 +202,36 @@ def test_engine_recovering_to_idle_blocked() -> None:
     engine.transition(ConversationState.RECOVERING)
     with pytest.raises(RuntimeError, match="illegal transition RECOVERING"):
         engine.transition(ConversationState.IDLE)
+
+
+def test_engine_recovering_to_reasoning_blocked() -> None:
+    engine = ConversationEngine(_report(), _personality())
+    engine.transition(ConversationState.LISTENING)
+    engine.transition(ConversationState.SPEAKING)
+    engine.transition(ConversationState.INTERRUPTED)
+    engine.transition(ConversationState.RECOVERING)
+    with pytest.raises(RuntimeError, match="illegal transition RECOVERING"):
+        engine.transition(ConversationState.REASONING)
+
+
+def test_engine_recovering_to_speaking_blocked() -> None:
+    engine = ConversationEngine(_report(), _personality())
+    engine.transition(ConversationState.LISTENING)
+    engine.transition(ConversationState.SPEAKING)
+    engine.transition(ConversationState.INTERRUPTED)
+    engine.transition(ConversationState.RECOVERING)
+    with pytest.raises(RuntimeError, match="illegal transition RECOVERING"):
+        engine.transition(ConversationState.SPEAKING)
+
+
+def test_engine_recovering_to_responding_blocked() -> None:
+    engine = ConversationEngine(_report(), _personality())
+    engine.transition(ConversationState.LISTENING)
+    engine.transition(ConversationState.SPEAKING)
+    engine.transition(ConversationState.INTERRUPTED)
+    engine.transition(ConversationState.RECOVERING)
+    with pytest.raises(RuntimeError, match="illegal transition RECOVERING"):
+        engine.transition(ConversationState.RESPONDING)
 
 
 # ---- 4.2 barge-in detector ----
@@ -219,6 +267,8 @@ def test_barge_in_detector_sets_flag_on_threshold(monkeypatch: pytest.MonkeyPatc
     flag = threading.Event()
     detector = BargeInDetector(flag, threshold=0.02, min_trigger_frames=2)
     detector.start()
+
+    assert holder["stream"].started is True
 
     low_energy = np.zeros((1024, 1), dtype=np.float32)
     high_energy = np.full((1024, 1), 0.1, dtype=np.float32)
@@ -306,6 +356,22 @@ class _StreamState:
         return False
 
 
+def test_play_audio_interruptible_missing_file_raises(tmp_path: Path) -> None:
+    missing = tmp_path / "missing.wav"
+    with pytest.raises(RuntimeError, match="file not found"):
+        playback.play_audio_interruptible(str(missing), threading.Event())
+
+
+def test_play_audio_interruptible_no_output_device_raises(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    audio = tmp_path / "audio.wav"
+    audio.write_bytes(b"x")
+    monkeypatch.setattr(playback, "has_output_device", lambda: False)
+    with pytest.raises(RuntimeError, match="no output device available"):
+        playback.play_audio_interruptible(str(audio), threading.Event())
+
+
 def test_play_audio_interruptible_pre_set_flag_returns_false(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -326,7 +392,7 @@ def test_play_audio_interruptible_pre_set_flag_returns_false(
     result = playback.play_audio_interruptible(str(audio), interrupt_flag)
 
     assert result is False
-    assert stop_calls["count"] >= 1
+    assert stop_calls["count"] == 1
 
 
 def test_play_audio_interruptible_interrupts_active_playback(
@@ -355,7 +421,7 @@ def test_play_audio_interruptible_interrupts_active_playback(
     result = playback.play_audio_interruptible(str(audio), interrupt_flag)
 
     assert result is False
-    assert stop_calls["count"] >= 1
+    assert stop_calls["count"] == 1
 
 
 def test_play_audio_interruptible_natural_completion_returns_true(
@@ -377,13 +443,18 @@ def test_play_audio_interruptible_natural_completion_returns_true(
     result = playback.play_audio_interruptible(str(audio), interrupt_flag)
 
     assert result is True
-    assert stop_calls["count"] >= 1
+    assert stop_calls["count"] == 1
 
 
 # ---- 4.4 voice orchestration ----
 
 
 def test_voice_turn_result_interrupted_contract() -> None:
+    default_result = VoiceTurnResult()
+    assert default_result.response is None
+    assert default_result.interrupted is False
+    assert default_result.interrupted_at is None
+
     result = VoiceTurnResult(response=None, interrupted=True, interrupted_at="2026-04-02T00:00:00+00:00")
     assert result.response is None
     assert result.interrupted is True
@@ -392,6 +463,8 @@ def test_voice_turn_result_interrupted_contract() -> None:
 
 def test_voice_service_interrupted_produces_correct_result(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.chdir(tmp_path)
+
+    detector_state = {"stopped": False}
 
     class _FakeSTT:
         def transcribe(self, _audio_path: str) -> str:
@@ -412,7 +485,7 @@ def test_voice_service_interrupted_produces_correct_result(monkeypatch: pytest.M
             return None
 
         def stop(self) -> None:
-            return None
+            detector_state["stopped"] = True
 
     session = Session(session_id="slice4-5-session", started_at=_now_iso(), ended_at=None, turn_count=0)
 
@@ -453,10 +526,56 @@ def test_voice_service_interrupted_produces_correct_result(monkeypatch: pytest.M
     assert result.interrupted is True
     assert result.response is None
     assert result.interrupted_at is not None
+    assert detector_state["stopped"] is True
     artifact = read_turn_artifact(session.session_id, "turn-0001")
     assert artifact.interrupted is True
     assert artifact.interrupted_at == result.interrupted_at
     assert artifact.final_state == "INTERRUPTED"
+
+
+def test_voice_service_non_interrupted_returns_normal_contract(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    class _FakeSTT:
+        def transcribe(self, _audio_path: str) -> str:
+            return "test transcript"
+
+    class _FakeTTS:
+        def synthesize(self, _text: str, output_path: str) -> str:
+            return output_path
+
+    class _FakeDetector:
+        failed = False
+        failure_reason = None
+
+        def __init__(self, _interrupt_flag) -> None:
+            pass
+
+        def start(self) -> None:
+            return None
+
+        def stop(self) -> None:
+            return None
+
+    monkeypatch.setattr(voice_service, "capture_utterance", lambda output_path, duration_seconds: output_path)
+    monkeypatch.setattr(voice_service, "select_stt_runtime", lambda report: _FakeSTT())
+    monkeypatch.setattr(voice_service, "select_tts_runtime", lambda report: _FakeTTS())
+    monkeypatch.setattr(
+        voice_service,
+        "run_turn",
+        lambda report, personality, transcript, *, session=None, memory=None, input_modality="voice": "unit response",
+    )
+    monkeypatch.setattr(voice_service, "BargeInDetector", _FakeDetector)
+    monkeypatch.setattr(voice_service, "play_audio_interruptible", lambda _audio_path, _interrupt_flag: True)
+    monkeypatch.setattr(voice_service.sd, "stop", lambda: None)
+
+    result = voice_service.run_voice_turn(_report(), _personality())
+
+    assert result.response == "unit response"
+    assert result.interrupted is False
+    assert result.interrupted_at is None
 
 
 def test_voice_service_detector_failure_degrades_to_blocking_play(
