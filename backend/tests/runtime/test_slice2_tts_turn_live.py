@@ -48,7 +48,8 @@ def test_spoken_voice_turn_live() -> None:
     assert OllamaLLM().is_available(), "[PREREQ FAILED] ollama unavailable"
 
     personality = load_personality_profile("default")
-    response = run_voice_turn(report, personality)
+    result = run_voice_turn(report, personality)
+    response = result.response
 
     assert isinstance(response, str)
     assert len(response.strip()) > 0

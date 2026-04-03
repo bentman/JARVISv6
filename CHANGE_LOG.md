@@ -15,6 +15,85 @@
 
 ## Entries
 
+- 2026-04-03 09:44
+  - Summary: The playback helper double-stop behavior was corrected by removing redundant body-level `sd.stop()` calls from `play_audio_interruptible(...)` and tightening the related unit proof to match the intended stop-path behavior.
+  - Scope: backend/app/runtimes/tts/playback.py, backend/tests/unit/test_slice4_3_interruptible_playback_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice4_3_interruptible_playback_units.py -q`
+    ```text
+    .... [100%]
+    4 passed in 0.47s
+    ```
+
+- 2026-04-03 07:40
+  - Summary: Sub-slice 4.5 was completed by adding final Slice 4 interruption unit coverage, adding the live interruption acceptance test, proving actual interruption during active playback, and passing the required runtime regressions plus full backend validation.
+  - Scope: backend/tests/unit/test_slice4_interruption_units.py, backend/tests/runtime/test_slice4_interruption_live.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice4_interruption_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice4_interruption_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_stt_turn_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice2_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3a_session_continuity_runtime.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3b_multiturn_voice_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope all`
+    ```text
+    ................... [100%]
+    19 passed in 0.80s
+    [INTERRUPTED] barge-in at
+    [TURN 2] interrupted: True
+    [ARTIFACT] interrupted=True
+    backend/tests/runtime/test_slice1_stt_turn_live.py::test_voice_turn_live ... PASSED
+    backend/tests/runtime/test_slice2_tts_turn_live.py::test_spoken_voice_turn_live ... PASSED
+    backend/tests/runtime/test_slice3a_session_continuity_runtime.py::test_session_continuity_runtime ... PASSED
+    backend/tests/runtime/test_slice3b_multiturn_voice_live.py::test_multiturn_voice_session_live ... PASSED
+    PASS: runtime: 6 tests
+    UNIT: PASS
+    RUNTIME: PASS
+    [PASS] JARVISv6 backend is validated!
+    ```
+
+- 2026-04-03 06:44
+  - Summary: Sub-slice 4.4 was completed by wiring interruption handling into `run_voice_turn(...)`, returning the explicit `VoiceTurnResult` interruption contract, updating persisted artifact interruption metadata through the stored-turn path, and aligning existing caller tests to the new result contract.
+  - Scope: backend/app/services/voice_service.py, backend/tests/runtime/test_slice1_stt_turn_live.py, backend/tests/runtime/test_slice2_tts_turn_live.py, backend/tests/runtime/test_slice3b_multiturn_voice_live.py, backend/tests/unit/test_slice2_tts_turn_units.py, backend/tests/unit/test_slice4_4_interruptible_voice_orchestration_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/services/voice_service.py backend/tests/runtime/test_slice1_stt_turn_live.py backend/tests/runtime/test_slice2_tts_turn_live.py backend/tests/runtime/test_slice3b_multiturn_voice_live.py backend/tests/unit/test_slice2_tts_turn_units.py backend/tests/unit/test_slice4_4_interruptible_voice_orchestration_units.py`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice2_tts_turn_units.py backend/tests/unit/test_slice4_4_interruptible_voice_orchestration_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_stt_turn_live.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice2_tts_turn_live.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3b_multiturn_voice_live.py -q`
+    ```text
+    Compiling 'backend/app/services/voice_service.py'...
+    Compiling 'backend/tests/runtime/test_slice1_stt_turn_live.py'...
+    Compiling 'backend/tests/runtime/test_slice2_tts_turn_live.py'...
+    Compiling 'backend/tests/runtime/test_slice3b_multiturn_voice_live.py'...
+    Compiling 'backend/tests/unit/test_slice2_tts_turn_units.py'...
+    Compiling 'backend/tests/unit/test_slice4_4_interruptible_voice_orchestration_units.py'...
+    ............. [100%]
+    13 passed in 0.72s
+    . [100%]
+    1 passed in 74.75s (0:01:14)
+    . [100%]
+    1 passed in 54.30s
+    . [100%]
+    1 passed in 85.84s (0:01:25)
+    ```
+
+- 2026-04-03 06:01
+  - Summary: Sub-slice 4.3 was completed by adding interruptible playback behavior, preserving existing `play_audio()`, and validating both interrupted and normal completion paths.
+  - Scope: backend/app/runtimes/tts/playback.py, backend/tests/unit/test_slice4_3_interruptible_playback_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/runtimes/tts/playback.py backend/tests/unit/test_slice4_3_interruptible_playback_units.py`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice4_3_interruptible_playback_units.py -q`; `backend/.venv/Scripts/python -c "import threading; from pathlib import Path; from backend.app.hardware.profiler import run_profiler; from backend.app.runtimes.tts.tts_runtime import select_tts_runtime; from backend.app.runtimes.tts.playback import play_audio_interruptible; report=run_profiler(); tts=select_tts_runtime(report); 
+if tts is None:
+    print('SKIP: TTS runtime unavailable')
+else:
+    audio_path='data/temp/slice4_3_test.wav'; Path('data/temp').mkdir(parents=True, exist_ok=True); tts.synthesize('This is a test of interruptible playback.', audio_path); print('synthesized:', Path(audio_path).exists()); flag=threading.Event(); flag.set(); result=play_audio_interruptible(audio_path, flag); print('interrupted_returns_false:', result is False); flag2=threading.Event(); result2=play_audio_interruptible(audio_path, flag2); print('normal_returns_true:', result2 is True)"`
+    ```text
+    Compiling 'backend/app/runtimes/tts/playback.py'...
+    Compiling 'backend/tests/unit/test_slice4_3_interruptible_playback_units.py'...
+    .... [100%]
+    4 passed in 0.48s
+    synthesized: True
+    interrupted_returns_false: True
+    normal_returns_true: True
+    ```
+
+- 2026-04-03 05:52
+  - Summary: Sub-slice 4.2 was completed by adding an isolated barge-in detector with input-stream-only ownership, explicit startup failure state exposure, threshold/consecutive-frame trigger behavior, and deterministic unit coverage.
+  - Scope: backend/app/runtimes/stt/barge_in.py, backend/tests/unit/test_slice4_2_barge_in_detector_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/runtimes/stt/barge_in.py backend/tests/unit/test_slice4_2_barge_in_detector_units.py`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice4_2_barge_in_detector_units.py -q`
+    ```text
+    Compiling 'backend/app/runtimes/stt/barge_in.py'...
+    Compiling 'backend/tests/unit/test_slice4_2_barge_in_detector_units.py'...
+    .... [100%]
+    4 passed in 0.98s
+    ```
+
 - 2026-04-02 10:09
   - Summary: Personality authority correction was completed by making `config/personality/jarvis_personality.json` the canonical default identity/persona source, applying `config/personality/default.yaml` as runtime contract/tuning overlay in the resolved profile, and enforcing identity authority in the shared generation path so explicit name/identity turns align to configured persona instead of model-native fallback.
   - Scope: backend/app/personality/loader.py, backend/app/cognition/prompt_assembler.py, backend/app/cognition/responder.py, backend/app/services/turn_service.py, CHANGE_LOG.md

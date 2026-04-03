@@ -28,7 +28,7 @@ def _has_input_device() -> tuple[bool, str]:
 @pytest.mark.filterwarnings(
     "ignore:.*torch\\.nn\\.utils\\.weight_norm.*deprecated.*torch\\.nn\\.utils\\.parametrizations\\.weight_norm.*:FutureWarning:torch\\.nn\\.utils\\.weight_norm"
 )
-def test_multiturn_voice_session_live() -> None:
+def test_barge_in_live() -> None:
     mic_ok, mic_reason = _has_input_device()
     assert mic_ok, f"[PREREQ FAILED] microphone: {mic_reason}"
 
@@ -50,31 +50,36 @@ def test_multiturn_voice_session_live() -> None:
     memory = WorkingMemory(max_turns=5)
     print(f"[SESSION] opened: {session.session_id}")
 
-    print("[TURN 1] speak now: What is your name?")
+    print("[TURN 1][BASELINE] microphone input expected now")
+    print("[TURN 1][BASELINE] speak now: What is your name?")
+    print("[TURN 1][BASELINE] after you finish speaking, remain silent while JARVIS speaks")
     result1 = run_voice_turn(report, personality, session=session, memory=memory)
-    response1 = result1.response
-    print(f"[TURN 1] response: {response1}")
-    print(f"[TURN 1] memory_turns: {len(memory.get_context_turns())}")
+    assert not result1.interrupted, "[PREREQ FAILED] turn 1 was interrupted before turn 2 could begin"
+    assert result1.response and len(result1.response.strip()) > 0
+    print(f"[TURN 1] response: {result1.response}")
 
-    print("[TURN 2] speak now: Nothing else for today.")
+    print("[TURN 2][INTERRUPTION] microphone input expected now")
+    print("[TURN 2][INTERRUPTION] speak now: Tell me something interesting about space.")
+    print("[TURN 2][INTERRUPTION] wait until JARVIS is actively speaking, then interrupt by saying: stop")
     result2 = run_voice_turn(report, personality, session=session, memory=memory)
-    response2 = result2.response
-    print(f"[TURN 2] response: {response2}")
-    print(f"[TURN 2] memory_turns: {len(memory.get_context_turns())}")
+    print(f"[TURN 2] interrupted: {result2.interrupted}")
+    print(f"[TURN 2] response: {result2.response!r}")
+
+    assert result2.interrupted, (
+        "[FAIL] barge-in was not triggered during turn 2 SPEAKING phase. "
+        "Re-run and speak clearly during JARVIS's spoken response."
+    )
+    assert result2.response is None
+    assert result2.interrupted_at is not None
 
     turn_ids = list_session_turns(session.session_id)
-    artifact1 = read_turn_artifact(session.session_id, turn_ids[0])
-    artifact2 = read_turn_artifact(session.session_id, turn_ids[1])
+    assert len(turn_ids) >= 1
+    last_artifact = read_turn_artifact(session.session_id, turn_ids[-1])
+    assert last_artifact.interrupted is True
+    assert last_artifact.interrupted_at == result2.interrupted_at
+    assert last_artifact.final_state == "INTERRUPTED"
+    print(f"[ARTIFACT] interrupted=True | interrupted_at={last_artifact.interrupted_at}")
 
     session = SessionManager.close_session(session)
     print(f"[SESSION] closed: {session.ended_at}")
-
-    assert len(turn_ids) == 2
-    assert len(memory.get_context_turns()) == 2
-    assert session.turn_count == 2
     assert session.ended_at is not None
-    assert isinstance(response1, str) and len(response1.strip()) > 0
-    assert isinstance(response2, str) and len(response2.strip()) > 0
-    assert artifact2.input_modality == "voice"
-    assert artifact1.transcript in artifact2.prompt_text
-    assert artifact2.transcript in artifact2.prompt_text

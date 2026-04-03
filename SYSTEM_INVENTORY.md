@@ -25,6 +25,12 @@
 
 ## Inventory
 
+- Capability: Interruptibility — Barge-In, Explicit Interruption Contract, and Artifact Evidence (Slice 4) verified - 2026-04-03 07:42
+  - State: Verified
+  - Location: `backend/app/runtimes/stt/barge_in.py`, `backend/app/runtimes/tts/playback.py`, `backend/app/conversation/engine.py`, `backend/app/artifacts/turn_artifact.py`, `backend/app/services/voice_service.py`, `backend/tests/unit/test_slice4_interruption_units.py`, `backend/tests/runtime/test_slice4_interruption_live.py`
+  - Validation: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice4_interruption_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice4_interruption_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_stt_turn_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice2_tts_turn_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3a_session_continuity_runtime.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice3b_multiturn_voice_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope all`
+  - Notes: Verified boundary is single-turn interruption handling with caller-initiated next turn; no continuous voice loop capability recorded.
+
 - Capability: Live Multi-Turn Spoken Continuity (Slice 3B) verified - 2026-04-01 19:01
   - State: Verified
   - Location: `backend/app/services/voice_service.py`, `backend/app/runtimes/stt/stt_runtime.py`, `backend/app/runtimes/tts/playback.py`, `backend/tests/runtime/test_slice3b_multiturn_voice_live.py`

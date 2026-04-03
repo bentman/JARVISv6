@@ -21,3 +21,6 @@ class TurnArtifact:
     started_at: str
     responded_at: str
     completed_at: str
+    interrupted: bool = False
+    interrupted_at: str | None = None
+    response_chars_spoken: int | None = None

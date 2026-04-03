@@ -153,9 +153,13 @@ def test_voice_service_degraded_mode(monkeypatch: pytest.MonkeyPatch, capsys: py
     monkeypatch.setattr(voice_service, "run_turn", lambda report, personality, transcript, session=None, memory=None, input_modality="voice": "unit response")
     monkeypatch.setattr(voice_service, "select_tts_runtime", lambda report: None)
 
-    response = voice_service.run_voice_turn(_report(), _personality())
+    result = voice_service.run_voice_turn(_report(), _personality())
+    response = result.response
     output = capsys.readouterr().out
 
+    assert isinstance(result, voice_service.VoiceTurnResult)
+    assert result.interrupted is False
+    assert result.interrupted_at is None
     assert isinstance(response, str)
     assert response.strip()
     assert "[DEGRADED] TTS unavailable — text response only" in output
@@ -191,10 +195,16 @@ def test_voice_service_speaking_state_transition(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(voice_service, "select_stt_runtime", lambda report: FakeSTT())
     monkeypatch.setattr(voice_service, "run_turn", lambda report, personality, transcript, session=None, memory=None, input_modality="voice": "unit response")
     monkeypatch.setattr(voice_service, "select_tts_runtime", lambda report: FakeTTS())
-    monkeypatch.setattr(voice_service, "play_audio", lambda _audio_path: None)
+    monkeypatch.setattr(voice_service, "BargeInDetector", lambda _flag: type("Detector", (), {"start": lambda self: None, "stop": lambda self: None, "failed": False, "failure_reason": None})())
+    monkeypatch.setattr(voice_service, "play_audio_interruptible", lambda _audio_path, _interrupt_flag: True)
+    monkeypatch.setattr(voice_service.sd, "stop", lambda: None)
 
-    response = voice_service.run_voice_turn(_report(), _personality())
+    result = voice_service.run_voice_turn(_report(), _personality())
+    response = result.response
 
+    assert isinstance(result, voice_service.VoiceTurnResult)
+    assert result.interrupted is False
+    assert result.interrupted_at is None
     assert isinstance(response, str)
     assert response.strip()
     assert FakeEngine.last is not None
