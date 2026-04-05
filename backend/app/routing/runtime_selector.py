@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from backend.app.core.capabilities import FullCapabilityReport
 from backend.app.core.settings import OLLAMA_HOST
 from backend.app.runtimes.llm.base import LLMBase
 from backend.app.runtimes.llm.local_runtime import LlamaCppLLM
@@ -20,3 +21,10 @@ def select_llm_runtime() -> LLMBase:
         "(LLAMA_CPP_MODEL_PATH not set or file missing), "
         f"OllamaLLM (Ollama not reachable at {OLLAMA_HOST})"
     )
+
+
+def select_llm_runtime_for_report(report: FullCapabilityReport | None = None) -> LLMBase:
+    """Report-aware compatibility surface for future readiness-aware LLM routing."""
+
+    _ = report
+    return select_llm_runtime()

@@ -1,0 +1,14 @@
+{
+  "manifest_id": "hw-cpu-base",
+  "version": "0.0.1",
+  "merge_behavior": "additive",
+  "applies_when": {
+    "memory_total_gb": {
+      "min": 0
+    }
+  },
+  "additive_requirements": {
+    "python_packages": []
+  },
+  "notes": "Base detector-derived host class. No hardware-specific additive packages are required for this class."
+}

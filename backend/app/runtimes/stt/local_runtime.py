@@ -1,57 +1,17 @@
 from __future__ import annotations
 
 import os
-import sys
 from typing import Any
 from pathlib import Path
 
+from backend.app.hardware.preflight import ensure_windows_cuda_dll_bootstrap
 from backend.app.models.catalog import get_model_entry
 from backend.app.models.manager import ModelNotAvailableError, ensure_model
 from backend.app.runtimes.stt.base import STTBase
 
 
-_DLL_DIR_HANDLES: list[Any] = []
-_DLL_DIRS_INITIALIZED = False
-
-
 def _configure_windows_cuda_dll_dirs() -> None:
-    global _DLL_DIRS_INITIALIZED
-    if _DLL_DIRS_INITIALIZED:
-        return
-
-    if os.name != "nt" or not hasattr(os, "add_dll_directory"):
-        _DLL_DIRS_INITIALIZED = True
-        return
-
-    candidate_dirs: list[Path] = []
-
-    cuda_path = os.environ.get("CUDA_PATH")
-    if cuda_path:
-        candidate_dirs.append(Path(cuda_path) / "bin")
-
-    venv = Path(sys.prefix)
-    candidate_dirs.extend(
-        [
-            venv / "Lib" / "site-packages" / "nvidia" / "cublas" / "bin",
-            venv / "Lib" / "site-packages" / "nvidia" / "cudnn" / "bin",
-            venv / "Lib" / "site-packages" / "nvidia" / "cuda_runtime" / "bin",
-        ]
-    )
-
-    seen: set[str] = set()
-    for dll_dir in candidate_dirs:
-        resolved = dll_dir.resolve()
-        key = str(resolved).lower()
-        if key in seen or not resolved.exists():
-            continue
-        seen.add(key)
-        try:
-            handle = os.add_dll_directory(str(resolved))
-            _DLL_DIR_HANDLES.append(handle)
-        except Exception:
-            continue
-
-    _DLL_DIRS_INITIALIZED = True
+    ensure_windows_cuda_dll_bootstrap()
 
 
 def _is_cuda_dll_error(exc: BaseException) -> bool:

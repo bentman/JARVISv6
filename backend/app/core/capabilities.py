@@ -55,11 +55,27 @@ class CapabilityFlags:
 
 
 @dataclass(slots=True)
+class BackendReadiness:
+    """Verified backend-readiness snapshot kept separate from host capability facts."""
+
+    stt_cuda_ready: bool = False
+    stt_cpu_ready: bool = False
+    stt_selected_device: str = "unavailable"
+    tts_cuda_ready: bool = False
+    tts_cpu_ready: bool = False
+    tts_selected_device: str = "unavailable"
+    llm_local_ready: bool = False
+    llm_service_ready: bool = False
+    llm_selected_runtime: str = "unavailable"
+
+
+@dataclass(slots=True)
 class FullCapabilityReport:
     """Top-level emitted capability report."""
 
     profile: HardwareProfile
     flags: CapabilityFlags
+    readiness: BackendReadiness
 
 
-__all__ = ["HardwareProfile", "CapabilityFlags", "FullCapabilityReport"]
+__all__ = ["HardwareProfile", "CapabilityFlags", "BackendReadiness", "FullCapabilityReport"]

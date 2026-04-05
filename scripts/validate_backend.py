@@ -10,6 +10,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from backend.app.hardware.preflight import derive_stt_device_readiness, run_hardware_preflight
+from backend.app.hardware.profiler import run_profiler
+
 
 SUITES: dict[str, str] = {
     "unit": "backend/tests/unit",
@@ -69,6 +76,50 @@ def parse_scope(argv: list[str]) -> list[str]:
 class SuiteResult:
     status: str
     summary: str
+
+
+def run_runtime_readiness_gate(logger: ValidationLogger) -> SuiteResult:
+    """Fail-closed STT readiness gate before runtime suite execution."""
+
+    logger.header("runtime readiness gate")
+    try:
+        report = run_profiler()
+        preflight = run_hardware_preflight(report.profile)
+        stt_readiness = derive_stt_device_readiness(preflight)
+    except Exception as exc:
+        message = f"readiness gate failed before runtime tests: {exc}"
+        logger.log(f"[FAIL] {message}")
+        return SuiteResult(status="FAIL", summary=message)
+
+    backend_scope = str(preflight.get("backend_scope") or "")
+    selected_device = str(stt_readiness.get("selected_device") or "unavailable")
+    selected_device_ready = bool(stt_readiness.get("selected_device_ready"))
+    logger.log(
+        f"[READINESS] backend_scope={backend_scope or 'unknown'} "
+        f"selected_device={selected_device} "
+        f"selected_device_ready={selected_device_ready} "
+        f"cuda_ready={bool(stt_readiness.get('cuda_ready'))} "
+        f"cpu_ready={bool(stt_readiness.get('cpu_ready'))} "
+        f"profile_id={report.profile.profile_id}"
+    )
+
+    if backend_scope != "stt":
+        message = f"readiness gate expected backend_scope=stt but got '{backend_scope or 'unknown'}'"
+        logger.log(f"[FAIL] {message}")
+        return SuiteResult(status="FAIL", summary=message)
+
+    if not selected_device_ready:
+        verification_results = preflight.get("verification_results")
+        message = (
+            f"readiness gate failed: selected STT device '{selected_device}' not proven "
+            f"({verification_results})"
+        )
+        logger.log(f"[FAIL] {message}")
+        return SuiteResult(status="FAIL", summary=message)
+
+    message = f"STT readiness proven for selected device '{selected_device}'; proceeding to runtime tests"
+    logger.log(f"[PASS] {message}")
+    return SuiteResult(status="PASS", summary=message)
 
 
 def parse_junit_results(xml_path: Path) -> tuple[list[tuple[str, str]], str]:
@@ -216,6 +267,30 @@ def main(argv: list[str]) -> int:
 
     logger = ValidationLogger()
     results: dict[str, SuiteResult] = {}
+
+    if "runtime" in selected_suites:
+        gate = run_runtime_readiness_gate(logger)
+        if gate.status == "FAIL":
+            results["runtime"] = gate
+            if "unit" in selected_suites:
+                logger.header("unit tests")
+                logger.log("[SKIP] unit suite not executed because runtime readiness gate failed")
+                results["unit"] = SuiteResult(
+                    status="PASS_WITH_SKIPS",
+                    summary="0 tests, 1 skipped (runtime readiness gate failed)",
+                )
+
+            logger.header("Validation Summary")
+            for suite_name in selected_suites:
+                logger.log(f"{suite_name.upper()}: {results[suite_name].status}")
+            logger.log("=" * 60)
+            logger.log("")
+            logger.log("[INVARIANTS]")
+            for suite_name in selected_suites:
+                logger.log(f"{suite_name.upper()}={results[suite_name].status}")
+            logger.log("\n[FAIL] Validation failed - runtime readiness gate did not pass")
+            logger.save()
+            return 1
 
     for suite_name in selected_suites:
         results[suite_name] = run_pytest_suite(logger, suite_name, SUITES[suite_name])

@@ -9,7 +9,12 @@ from backend.app.artifacts.storage import (
 )
 from backend.app.artifacts.turn_artifact import TurnArtifact
 from backend.app.conversation.session_manager import SessionManager
-from backend.app.core.capabilities import CapabilityFlags, FullCapabilityReport, HardwareProfile
+from backend.app.core.capabilities import (
+    BackendReadiness,
+    CapabilityFlags,
+    FullCapabilityReport,
+    HardwareProfile,
+)
 from backend.app.memory.working import TurnSummary, WorkingMemory
 from backend.app.memory.write_policy import evaluate_write_policy
 from backend.app.personality.schema import PersonalityProfile
@@ -51,6 +56,17 @@ def _report() -> FullCapabilityReport:
             requires_degraded_mode=False,
             stt_recommended_runtime="faster-whisper",
             stt_recommended_model="whisper-large-v3-turbo",
+        ),
+        readiness=BackendReadiness(
+            stt_cuda_ready=True,
+            stt_cpu_ready=True,
+            stt_selected_device="cpu",
+            tts_cuda_ready=False,
+            tts_cpu_ready=True,
+            tts_selected_device="cpu",
+            llm_local_ready=False,
+            llm_service_ready=False,
+            llm_selected_runtime="unavailable",
         ),
     )
 

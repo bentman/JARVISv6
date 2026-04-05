@@ -25,6 +25,18 @@
 
 ## Inventory
 
+- Capability: Hardware Profile Provisioning and Backend Readiness Rail (Slice 0.0) verified - 2026-04-05 01:27
+  - State: Verified
+  - Location: `config/hardware/hw_cpu_base.json`, `config/hardware/hw_gpu_present.json`, `config/hardware/hw_gpu_noncuda.json`, `config/hardware/hw_gpu_nvidia_cuda.json`, `config/hardware/hw_npu_present.json`, `backend/app/hardware/profile_resolver.py`, `backend/app/hardware/preflight.py`, `backend/app/hardware/profiler.py`, `backend/app/core/capabilities.py`, `backend/app/runtimes/stt/stt_runtime.py`, `backend/app/runtimes/tts/tts_runtime.py`, `scripts/bootstrap_readiness.py`
+  - Validation: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_profiler.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice1_stt_turn_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice2_tts_turn_units.py -q`; `backend/.venv/Scripts/python -c "from backend.app.hardware.profiler import run_profiler; r=run_profiler(); print('stt_recommended_device=', r.flags.stt_recommended_device); print('tts_recommended_device=', r.flags.tts_recommended_device); print('readiness=', r.readiness)"`; `backend/.venv/Scripts/python scripts/bootstrap_readiness.py --verify-only`
+  - Notes: Hardware-only manifests resolve additively, preflight owns provisioning/verification, profiler owns readiness/evidence-token selection, and STT/TTS recommendations/routes consume verified readiness fields.
+
+- Capability: Windows CUDA DLL/bootstrap setup ownership normalized to preflight (STT delegated) verified - 2026-04-05 01:27
+  - State: Verified
+  - Location: `backend/app/hardware/preflight.py`, `backend/app/runtimes/stt/local_runtime.py`
+  - Validation: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice1_stt_turn_units.py -q`; `backend/.venv/Scripts/python -c "from backend.app.hardware.profiler import run_profiler; from backend.app.hardware.preflight import run_hardware_preflight, derive_stt_device_readiness; from backend.app.runtimes.stt.stt_runtime import select_stt_runtime; r=run_profiler(); p=run_hardware_preflight(r.profile); d=derive_stt_device_readiness(p); rt=select_stt_runtime(r); print('verification_results=', p.get('verification_results')); print('derived=', d); print('runtime_device=', getattr(rt, 'device', None))"`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_stt_turn_live.py -v -s`
+  - Notes: `preflight.py` exposes the Windows CUDA DLL/bootstrap setup surface and STT local runtime delegates to that ownership surface.
+
 - Capability: Interruptibility — Barge-In, Explicit Interruption Contract, and Artifact Evidence (Slice 4) verified - 2026-04-03 07:42
   - State: Verified
   - Location: `backend/app/runtimes/stt/barge_in.py`, `backend/app/runtimes/tts/playback.py`, `backend/app/conversation/engine.py`, `backend/app/artifacts/turn_artifact.py`, `backend/app/services/voice_service.py`, `backend/tests/unit/test_slice4_interruption_units.py`, `backend/tests/runtime/test_slice4_interruption_live.py`

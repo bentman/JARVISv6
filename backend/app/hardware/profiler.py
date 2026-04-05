@@ -7,13 +7,127 @@ import subprocess
 
 import psutil
 
-from backend.app.core.capabilities import CapabilityFlags, FullCapabilityReport, HardwareProfile
+from backend.app.core.capabilities import (
+    BackendReadiness,
+    CapabilityFlags,
+    FullCapabilityReport,
+    HardwareProfile,
+)
 from backend.app.hardware.detectors.cpu_detector import detect_cpu
 from backend.app.hardware.detectors.cuda_detector import detect_cuda
 from backend.app.hardware.detectors.gpu_detector import detect_gpu
 from backend.app.hardware.detectors.memory_detector import detect_memory
 from backend.app.hardware.detectors.npu_detector import detect_npu
 from backend.app.hardware.detectors.os_detector import detect_os
+from backend.app.hardware.preflight import (
+    derive_stt_device_readiness,
+    derive_tts_device_readiness,
+    run_hardware_preflight,
+)
+from backend.app.hardware.profile_resolver import resolve_hardware_profiles
+
+
+_HW_GPU_CUDA_MANIFEST_ID = "hw-gpu-nvidia-cuda"
+_HW_NPU_PRESENT_MANIFEST_ID = "hw-npu-present"
+
+
+def _dedupe_preserve_order(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        ordered.append(value)
+    return ordered
+
+
+def resolve_backend_evidence_tokens(backend_scope: str, matched_manifest_ids: list[str]) -> list[str]:
+    """Caller-owned backend evidence token selection for preflight verification."""
+
+    if backend_scope == "stt":
+        tokens: list[str] = ["import:faster_whisper"]
+        if _HW_GPU_CUDA_MANIFEST_ID in matched_manifest_ids:
+            tokens.extend(
+                [
+                    "import:ctranslate2",
+                    "stt_runtime:faster-whisper",
+                    "dll:cublas64_12.dll",
+                    "dll:cudnn64_9.dll",
+                ]
+            )
+        if _HW_NPU_PRESENT_MANIFEST_ID in matched_manifest_ids:
+            tokens.extend(
+                [
+                    "import:onnxruntime",
+                    "stt_runtime:onnx-whisper",
+                ]
+            )
+        return _dedupe_preserve_order(tokens)
+
+    if backend_scope == "tts":
+        tokens = ["import:kokoro"]
+        if _HW_GPU_CUDA_MANIFEST_ID in matched_manifest_ids:
+            tokens.extend(
+                [
+                    "import:torch",
+                    "tts_runtime:kokoro",
+                    "torch_cuda:available",
+                    "dll:cublas64_12.dll",
+                    "dll:cudnn64_9.dll",
+                ]
+            )
+        return _dedupe_preserve_order(tokens)
+
+    raise ValueError(f"unsupported backend_scope: {backend_scope}")
+
+
+def get_stt_device_readiness(profile: HardwareProfile) -> dict[str, object]:
+    """Return deterministic STT device-readiness projection from preflight output."""
+
+    resolution = resolve_hardware_profiles(profile)
+    matched_manifest_ids = [str(item) for item in list(resolution.get("matched_manifest_ids") or [])]
+    evidence_tokens = resolve_backend_evidence_tokens("stt", matched_manifest_ids)
+    preflight_result = run_hardware_preflight(
+        profile,
+        backend_scope="stt",
+        evidence_tokens=evidence_tokens,
+    )
+    derived = derive_stt_device_readiness(preflight_result)
+
+    return {
+        "backend_scope": "stt",
+        "profile_id": profile.profile_id,
+        "matched_manifest_ids": derived["matched_manifest_ids"],
+        "cuda_ready": derived["cuda_ready"],
+        "cpu_ready": derived["cpu_ready"],
+        "selected_device": derived["selected_device"],
+        "selected_device_ready": derived["selected_device_ready"],
+    }
+
+
+def get_tts_device_readiness(profile: HardwareProfile) -> dict[str, object]:
+    """Return deterministic TTS device-readiness projection from preflight output."""
+
+    resolution = resolve_hardware_profiles(profile)
+    matched_manifest_ids = [str(item) for item in list(resolution.get("matched_manifest_ids") or [])]
+    evidence_tokens = resolve_backend_evidence_tokens("tts", matched_manifest_ids)
+    preflight_result = run_hardware_preflight(
+        profile,
+        backend_scope="tts",
+        evidence_tokens=evidence_tokens,
+    )
+    derived = derive_tts_device_readiness(preflight_result)
+
+    return {
+        "backend_scope": "tts",
+        "profile_id": profile.profile_id,
+        "matched_manifest_ids": derived["matched_manifest_ids"],
+        "cuda_ready": derived["cuda_ready"],
+        "cpu_ready": derived["cpu_ready"],
+        "selected_device": derived["selected_device"],
+        "selected_device_ready": derived["selected_device_ready"],
+    }
 
 
 def _windows_battery_present() -> bool:
@@ -127,7 +241,12 @@ def _recommend_tts(profile: HardwareProfile) -> tuple[str, str, str]:
     return runtime, model, device
 
 
-def derive_capability_flags(profile: HardwareProfile) -> CapabilityFlags:
+def derive_capability_flags(
+    profile: HardwareProfile,
+    *,
+    stt_recommended_device: str | None = None,
+    tts_recommended_device: str | None = None,
+) -> CapabilityFlags:
     """Derive deterministic Slice 0.9 capability flags from HardwareProfile."""
 
     memory_total_gb = float(profile.memory_total_gb)
@@ -139,8 +258,11 @@ def derive_capability_flags(profile: HardwareProfile) -> CapabilityFlags:
     requires_degraded_mode = (memory_total_gb < 4.0) or (
         (not gpu_available) and (memory_total_gb < 8.0)
     )
-    stt_runtime, stt_model, stt_device = _recommend_stt(profile, requires_degraded_mode)
-    tts_runtime, tts_model, tts_device = _recommend_tts(profile)
+    stt_runtime, stt_model, default_stt_device = _recommend_stt(profile, requires_degraded_mode)
+    tts_runtime, tts_model, default_tts_device = _recommend_tts(profile)
+
+    final_stt_device = default_stt_device if stt_recommended_device is None else stt_recommended_device
+    final_tts_device = default_tts_device if tts_recommended_device is None else tts_recommended_device
 
     # `profile.cuda_available` is currently a host-level CUDA/NVIDIA presence
     # signal. Runtime-specific CUDA usability must still be decided by each
@@ -157,10 +279,52 @@ def derive_capability_flags(profile: HardwareProfile) -> CapabilityFlags:
         requires_degraded_mode=requires_degraded_mode,
         stt_recommended_runtime=stt_runtime,
         stt_recommended_model=stt_model,
-        stt_recommended_device=stt_device,
+        stt_recommended_device=final_stt_device,
         tts_recommended_runtime=tts_runtime,
         tts_recommended_model=tts_model,
-        tts_recommended_device=tts_device,
+        tts_recommended_device=final_tts_device,
+    )
+
+
+def _derive_backend_readiness(profile: HardwareProfile) -> BackendReadiness:
+    try:
+        stt = get_stt_device_readiness(profile)
+    except Exception:
+        stt = {
+            "cuda_ready": False,
+            "cpu_ready": False,
+            "selected_device": "unavailable",
+        }
+
+    stt_cuda_ready = bool(stt.get("cuda_ready"))
+    stt_cpu_ready = bool(stt.get("cpu_ready"))
+    stt_selected_device = str(stt.get("selected_device") or "unavailable")
+    if stt_selected_device not in {"cuda", "cpu", "unavailable"}:
+        stt_selected_device = "unavailable"
+
+    try:
+        tts = get_tts_device_readiness(profile)
+    except Exception:
+        tts_cpu_ready = False
+        tts_cuda_ready = False
+        tts_selected_device = "unavailable"
+    else:
+        tts_cuda_ready = bool(tts.get("cuda_ready"))
+        tts_cpu_ready = bool(tts.get("cpu_ready"))
+        tts_selected_device = str(tts.get("selected_device") or "unavailable")
+        if tts_selected_device not in {"cuda", "cpu", "unavailable"}:
+            tts_selected_device = "unavailable"
+
+    return BackendReadiness(
+        stt_cuda_ready=stt_cuda_ready,
+        stt_cpu_ready=stt_cpu_ready,
+        stt_selected_device=stt_selected_device,
+        tts_cuda_ready=tts_cuda_ready,
+        tts_cpu_ready=tts_cpu_ready,
+        tts_selected_device=tts_selected_device,
+        llm_local_ready=False,
+        llm_service_ready=False,
+        llm_selected_runtime="unavailable",
     )
 
 
@@ -241,5 +405,11 @@ def run_profiler() -> FullCapabilityReport:
         npu_info=npu_info,
         device_class=device_class,
     )
-    flags = derive_capability_flags(profile)
-    return FullCapabilityReport(profile=profile, flags=flags)
+    readiness = _derive_backend_readiness(profile)
+    flags = derive_capability_flags(
+        profile,
+        stt_recommended_device=readiness.stt_selected_device,
+        tts_recommended_device=readiness.tts_selected_device,
+    )
+
+    return FullCapabilityReport(profile=profile, flags=flags, readiness=readiness)

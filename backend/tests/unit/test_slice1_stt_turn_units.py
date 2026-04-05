@@ -9,12 +9,18 @@ from backend.app.cognition.prompt_assembler import assemble_prompt
 from backend.app.cognition.responder import get_response
 from backend.app.conversation.engine import ConversationEngine
 from backend.app.conversation.states import ConversationState
-from backend.app.core.capabilities import CapabilityFlags, FullCapabilityReport, HardwareProfile
+from backend.app.core.capabilities import (
+    BackendReadiness,
+    CapabilityFlags,
+    FullCapabilityReport,
+    HardwareProfile,
+)
 from backend.app.personality.loader import load_personality_profile
 from backend.app.personality.schema import PersonalityProfile
 from backend.app.routing import runtime_selector
 from backend.app.runtimes.llm.base import LLMBase
 from backend.app.runtimes.stt.local_runtime import FasterWhisperSTT
+from backend.app.runtimes.stt import stt_runtime
 from backend.app.models.catalog import get_model_entry
 
 
@@ -73,6 +79,18 @@ def _report() -> FullCapabilityReport:
             requires_degraded_mode=False,
             stt_recommended_runtime="faster-whisper",
             stt_recommended_model="whisper-large-v3-turbo",
+            stt_recommended_device="cuda",
+            tts_recommended_runtime="kokoro",
+            tts_recommended_model="kokoro-v1.0",
+            tts_recommended_device="cpu",
+        ),
+        readiness=BackendReadiness(
+            stt_cuda_ready=True,
+            stt_cpu_ready=True,
+            stt_selected_device="cuda",
+            tts_cuda_ready=False,
+            tts_cpu_ready=True,
+            tts_selected_device="cpu",
         ),
     )
 
@@ -270,3 +288,50 @@ def test_stt_fail_closed_when_catalog_mapping_invalid(monkeypatch, tmp_path) -> 
     stt = FasterWhisperSTT("whisper-large-v3-turbo", device="cpu")
     with pytest.raises(RuntimeError, match="catalog missing local_dir"):
         stt.transcribe(str(audio))
+
+
+def test_stt_selector_uses_cuda_only_when_readiness_verified(monkeypatch) -> None:
+    class FakeRuntime:
+        def __init__(self, model_name: str, device: str) -> None:
+            self.model_name = model_name
+            self.device = device
+
+        def is_available(self) -> bool:
+            return True
+
+    monkeypatch.setattr("backend.app.runtimes.stt.stt_runtime.FasterWhisperSTT", FakeRuntime)
+    monkeypatch.setattr("backend.app.runtimes.stt.stt_runtime._STT_RUNTIME_CACHE", {})
+
+    report = _report()
+    report.flags.stt_recommended_device = "cuda"
+    selected = stt_runtime.select_stt_runtime(report)
+    assert selected is not None
+    assert getattr(selected, "device", None) == "cuda"
+
+
+def test_stt_selector_forces_cpu_when_cuda_not_verified(monkeypatch) -> None:
+    class FakeRuntime:
+        def __init__(self, model_name: str, device: str) -> None:
+            self.model_name = model_name
+            self.device = device
+
+        def is_available(self) -> bool:
+            return True
+
+    monkeypatch.setattr("backend.app.runtimes.stt.stt_runtime.FasterWhisperSTT", FakeRuntime)
+    monkeypatch.setattr("backend.app.runtimes.stt.stt_runtime._STT_RUNTIME_CACHE", {})
+
+    report = _report()
+    report.flags.stt_recommended_device = "cpu"
+    selected = stt_runtime.select_stt_runtime(report)
+    assert selected is not None
+    assert getattr(selected, "device", None) == "cpu"
+
+
+def test_stt_selector_returns_none_when_no_readiness_safe_device(monkeypatch) -> None:
+    monkeypatch.setattr("backend.app.runtimes.stt.stt_runtime._STT_RUNTIME_CACHE", {})
+
+    report = _report()
+    report.flags.stt_recommended_device = "unavailable"
+    selected = stt_runtime.select_stt_runtime(report)
+    assert selected is None

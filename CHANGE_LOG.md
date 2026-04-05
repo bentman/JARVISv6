@@ -15,6 +15,206 @@
 
 ## Entries
 
+- 2026-04-05 01:27
+  - Summary: Windows CUDA DLL/bootstrap ownership was normalized so `backend/app/hardware/preflight.py` is the single setup owner, and duplicate STT runtime DLL/bootstrap setup in `backend/app/runtimes/stt/local_runtime.py` was removed by delegation to preflight ownership with behavior preserved.
+  - Scope: backend/app/hardware/preflight.py, backend/app/runtimes/stt/local_runtime.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice1_stt_turn_units.py -q`; `backend/.venv/Scripts/python -c "from backend.app.hardware.profiler import run_profiler; from backend.app.hardware.preflight import run_hardware_preflight, derive_stt_device_readiness; from backend.app.runtimes.stt.stt_runtime import select_stt_runtime; r=run_profiler(); p=run_hardware_preflight(r.profile); d=derive_stt_device_readiness(p); rt=select_stt_runtime(r); print('verification_results=', p.get('verification_results')); print('derived=', d); print('runtime_device=', getattr(rt, 'device', None))"`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_stt_turn_live.py -v -s`
+    ```text
+    29 passed in 2.66s
+    18 passed in 0.27s
+    verification_results= [{'token': 'import:faster_whisper', 'ok': True}, ... {'token': 'dll:cublas64_12.dll', 'ok': True}, {'token': 'dll:cudnn64_9.dll', 'ok': True}]
+    derived= {'matched_manifest_ids': ['hw-cpu-base', 'hw-gpu-nvidia-cuda', 'hw-gpu-present'], 'cuda_ready': True, 'cpu_ready': True, 'selected_device': 'cuda', 'selected_device_ready': True}
+    runtime_device= cuda
+    backend/tests/runtime/test_slice1_stt_turn_live.py::test_voice_turn_live ... PASSED
+    1 passed in 49.40s
+    ```
+
+- 2026-04-05 01:22
+  - Summary: Profiler report assembly was normalized to remove post-construction mutation of readiness-backed recommendation fields, and `CapabilityFlags` now constructs final readiness-backed STT/TTS recommended device values in one pass.
+  - Scope: backend/app/hardware/profiler.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_profiler.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice1_stt_turn_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice2_tts_turn_units.py -q`; `backend/.venv/Scripts/python -c "from backend.app.hardware.profiler import run_profiler; r=run_profiler(); print('stt_recommended_device=', r.flags.stt_recommended_device); print('tts_recommended_device=', r.flags.tts_recommended_device); print('readiness=', r.readiness)"`
+    ```text
+    4 passed in 0.40s
+    29 passed in 2.93s
+    18 passed in 0.28s
+    13 passed in 0.77s
+    stt_recommended_device= cuda
+    tts_recommended_device= cuda
+    readiness= BackendReadiness(... stt_selected_device='cuda', ... tts_selected_device='cuda', ...)
+    ```
+
+- 2026-04-05 01:10
+  - Summary: Service-specific evidence-token ownership was removed from `backend/app/hardware/preflight.py`, moved to the profiler boundary in `backend/app/hardware/profiler.py`, and `run_hardware_preflight(...)` was normalized to evidence-agnostic verification/execution using caller-supplied evidence tokens while hardware manifests remained hardware-only.
+  - Scope: backend/app/hardware/preflight.py, backend/app/hardware/profiler.py, backend/tests/unit/test_hardware_readiness.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_profiler.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice1_stt_turn_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice2_tts_turn_units.py -q`; `backend/.venv/Scripts/python -c "from backend.app.hardware.profiler import run_profiler; from backend.app.hardware.preflight import run_hardware_preflight, derive_stt_device_readiness, derive_tts_device_readiness; r=run_profiler(); p_all=run_hardware_preflight(r.profile); p_tts=run_hardware_preflight(r.profile, backend_scope='tts'); print('all_matched=', p_all.get('matched_manifest_ids')); print('stt=', derive_stt_device_readiness(p_all)); print('tts=', derive_tts_device_readiness(p_tts))"`
+    ```text
+    29 passed in 2.90s
+    4 passed in 0.40s
+    18 passed in 0.27s
+    13 passed in 0.74s
+    all_matched= ['hw-cpu-base', 'hw-gpu-nvidia-cuda', 'hw-gpu-present']
+    stt= {... 'selected_device': 'cuda', 'selected_device_ready': True}
+    tts= {... 'selected_device': 'cuda', 'selected_device_ready': True}
+    ```
+
+- 2026-04-05 00:38
+  - Summary: Service-oriented hardware manifests were retired and replaced with detector-derived hardware-only manifests, and hardware resolver/preflight ownership was corrected so manifests carry only additive hardware package/install metadata while service-specific readiness policy remains code-owned.
+  - Scope: config/hardware/stt_base_cpu.json, config/hardware/stt_gpu_noncuda.json, config/hardware/stt_gpu_cuda.json, config/hardware/stt_npu.json, config/hardware/tts_gpu_cuda.json, config/hardware/hw_cpu_base.json, config/hardware/hw_gpu_present.json, config/hardware/hw_gpu_noncuda.json, config/hardware/hw_gpu_nvidia_cuda.json, config/hardware/hw_npu_present.json, backend/app/hardware/profile_resolver.py, backend/app/hardware/preflight.py, backend/tests/unit/test_hardware_readiness.py, backend/tests/unit/test_hardware_profiler.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_profiler.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice1_stt_turn_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice2_tts_turn_units.py -q`; `backend/.venv/Scripts/python -c "import json; from pathlib import Path; [print(p.name, json.loads(p.read_text())) for p in sorted(Path('config/hardware').glob('*.json'))]"`; `backend/.venv/Scripts/python -c "from backend.app.hardware.profiler import run_profiler; from backend.app.hardware.preflight import run_hardware_preflight, derive_stt_device_readiness, derive_tts_device_readiness; r=run_profiler(); p_all=run_hardware_preflight(r.profile); p_tts=run_hardware_preflight(r.profile, backend_scope='tts'); print('all_matched=', p_all.get('matched_manifest_ids')); print('stt=', derive_stt_device_readiness(p_all)); print('tts=', derive_tts_device_readiness(p_tts))"`
+    ```text
+    29 passed in 2.84s
+    4 passed in 0.52s
+    18 passed in 0.27s
+    13 passed in 0.76s
+    hw_cpu_base.json ... hw_gpu_noncuda.json ... hw_gpu_nvidia_cuda.json ... hw_gpu_present.json ... hw_npu_present.json
+    all_matched= ['hw-cpu-base', 'hw-gpu-nvidia-cuda', 'hw-gpu-present']
+    stt= {... 'selected_device': 'cuda', ...}
+    tts= {... 'selected_device': 'cuda', ...}
+    ```
+
+- 2026-04-04 23:59
+  - Summary: Dependency ownership was reconciled by restoring `backend/requirements.txt` to neutral/base truth, moving CUDA-specific TTS torch ownership to `config/hardware/tts_gpu_cuda.json`, and updating preflight/install planning to consume manifest-defined `pip_extra_index_urls` for additive installs with unit proof of the corrected boundary.
+  - Scope: backend/requirements.txt, config/hardware/tts_gpu_cuda.json, backend/app/hardware/preflight.py, backend/tests/unit/test_hardware_readiness.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -c "from pathlib import Path; print(Path('backend/requirements.txt').read_text())"`; `backend/.venv/Scripts/python -c "import json; from pathlib import Path; print(json.loads(Path('config/hardware/tts_gpu_cuda.json').read_text()))"`; `backend/.venv/Scripts/python -c "from backend.app.hardware.profiler import run_profiler; from backend.app.hardware.preflight import run_hardware_preflight, derive_tts_device_readiness; r=run_profiler(); p=run_hardware_preflight(r.profile, backend_scope='tts'); d=derive_tts_device_readiness(p); print('verification_results=', p.get('verification_results')); print('derived=', d)"`; `backend/.venv/Scripts/python -m pip show torch kokoro`
+    ```text
+    29 passed in 2.66s
+    requirements: no '--extra-index-url .../cu128' and no 'torch==2.11.0+cu128'
+    manifest additive install: {'pip_extra_index_urls': ['https://download.pytorch.org/whl/cu128']}
+    derived= {'matched_manifest_ids': ['tts-gpu-cuda'], 'cuda_ready': True, 'cpu_ready': True, 'selected_device': 'cuda', 'selected_device_ready': True}
+    torch 2.11.0+cu128 | kokoro 0.9.4
+    ```
+
+- 2026-04-04 23:37
+  - Summary: TTS CUDA dependency source-of-truth was reconciled by declaring the CUDA-enabled torch build in `backend/requirements.txt`, aligning the TTS CUDA hardware manifest requirement, and adding unit proof that manifest expectations match the declared dependency authority.
+  - Scope: backend/requirements.txt, config/hardware/tts_gpu_cuda.json, backend/tests/unit/test_hardware_readiness.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -m pip show torch kokoro`; `backend/.venv/Scripts/python -c "from backend.app.hardware.profiler import run_profiler; from backend.app.hardware.preflight import run_hardware_preflight, derive_tts_device_readiness; r=run_profiler(); p=run_hardware_preflight(r.profile, backend_scope='tts'); d=derive_tts_device_readiness(p); print('verification_results=', p.get('verification_results')); print('derived=', d)"`
+    ```text
+    28 passed in 2.82s
+    Name: torch
+    Version: 2.11.0+cu128
+    {'token': 'torch_cuda:available', 'ok': True}
+    derived= {'matched_manifest_ids': ['tts-gpu-cuda'], 'cuda_ready': True, 'cpu_ready': True, 'selected_device': 'cuda', 'selected_device_ready': True}
+    ```
+
+- 2026-04-04 23:31
+  - Summary: TTS CUDA readiness rail implementation was completed by adding a dedicated TTS CUDA hardware manifest and wiring profiler/preflight-backed TTS readiness selection with deterministic unit/runtime proof surfaces.
+  - Scope: config/hardware/tts_gpu_cuda.json, backend/app/hardware/preflight.py, backend/app/hardware/profiler.py, backend/tests/unit/test_hardware_readiness.py, backend/tests/unit/test_slice2_tts_turn_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice2_tts_turn_units.py -q`; `backend/.venv/Scripts/python -c "from backend.app.hardware.profiler import run_profiler; from backend.app.hardware.preflight import run_hardware_preflight, derive_tts_device_readiness; r=run_profiler(); p=run_hardware_preflight(r.profile, backend_scope='tts'); d=derive_tts_device_readiness(p); print('verification_results=', p.get('verification_results')); print('derived=', d)"`
+    ```text
+    28 passed in 2.82s
+    13 passed in 0.42s
+    {'token': 'import:kokoro', 'ok': True}
+    {'token': 'import:torch', 'ok': True}
+    {'token': 'tts_runtime:kokoro', 'ok': True}
+    {'token': 'torch_cuda:available', 'ok': True}
+    derived= {'matched_manifest_ids': ['tts-gpu-cuda'], 'cuda_ready': True, 'cpu_ready': True, 'selected_device': 'cuda', 'selected_device_ready': True}
+    ```
+
+- 2026-04-04 23:24
+  - Summary: STT CUDA readiness corrective behavior was finalized in the shared preflight/readiness path and verified by targeted STT and readiness unit suites to keep CUDA gating deterministic with CPU-safe degradation.
+  - Scope: backend/app/hardware/preflight.py, backend/tests/unit/test_hardware_readiness.py, backend/tests/unit/test_slice1_stt_turn_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice1_stt_turn_units.py -q`
+    ```text
+    28 passed in 2.82s
+    18 passed in 0.28s
+    ```
+
+- 2026-04-04 23:20
+  - Summary: Post-0.0.7 regression contract-alignment fixes were completed for Slice 3A and Slice 4 unit suites to keep continuity/interruption contracts consistent with the readiness-backed runtime surfaces.
+  - Scope: backend/tests/unit/test_slice3a_session_continuity_units.py, backend/tests/unit/test_slice4_interruption_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice3a_session_continuity_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice4_interruption_units.py -q`
+    ```text
+    17 passed in 0.22s
+    27 passed in 0.76s
+    ```
+
+- 2026-04-04 22:30
+  - Summary: Sub-Slice 0.0.7 was completed by extending the shared backend-readiness schema beyond STT/TTS-only shape with deterministic LLM placeholder fields, and by adding a backend-agnostic readiness-derivation helper while preserving active STT readiness behavior.
+  - Scope: backend/app/core/capabilities.py, backend/app/hardware/preflight.py, backend/app/hardware/profiler.py, backend/app/routing/runtime_selector.py, backend/tests/unit/test_hardware_profiler.py, backend/tests/unit/test_hardware_readiness.py, backend/tests/runtime/test_profiler_live.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_profiler.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_profiler_live.py -v -s`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope runtime`
+    ```text
+    4 passed in 1.53s
+    25 passed in 0.34s
+    backend/tests/runtime/test_profiler_live.py::test_profiler_live_returns_expected_runtime_contract ... PASSED
+    readiness BackendReadiness(... llm_local_ready=False, llm_service_ready=False, llm_selected_runtime='unavailable')
+    PASS: runtime: 6 tests
+    RUNTIME: PASS
+    [PASS] JARVISv6 backend is validated!
+    ```
+
+- 2026-04-04 08:59
+  - Summary: Sub-Slice 0.0.6 was completed by adding an explicit STT bootstrap/readiness operator entrypoint and adding fail-closed runtime readiness gating before runtime test execution; readiness gating was corrected to validate the selected STT device path so CPU-ready degradation passes without requiring CUDA proof while CUDA remains unverified when CUDA evidence fails.
+  - Scope: scripts/bootstrap_readiness.py, scripts/validate_backend.py, backend/app/hardware/preflight.py, backend/tests/unit/test_hardware_readiness.py, backend/tests/runtime/test_profiler_live.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_profiler_live.py -v -s`; `backend/.venv/Scripts/python scripts/bootstrap_readiness.py --verify-only`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope runtime`
+    ```text
+    ....................... [100%]
+    23 passed in 0.30s
+    backend/tests/runtime/test_profiler_live.py::test_profiler_live_returns_expected_runtime_contract ... PASSED
+    [READINESS] backend_scope=stt selected_device=cpu selected_device_ready=True cuda_ready=False cpu_ready=True profile_id=nvidia-cuda-desktop-63gb
+    [PASS] STT readiness proven for selected device: cpu
+    [PASS] STT readiness proven for selected device 'cpu'; proceeding to runtime tests
+    RUNTIME: PASS
+    ```
+
+- 2026-04-04 08:34
+  - Summary: Sub-Slice 0.0.5 was completed by adding profiler-owned backend readiness to the shared capability/report surface, making profiler recommendations readiness-backed for STT and minimally readiness-backed for TTS within 0.0.5 scope, and updating STT/TTS selectors to consume report-owned recommendation authority.
+  - Scope: backend/app/core/capabilities.py, backend/app/hardware/profiler.py, backend/app/runtimes/stt/stt_runtime.py, backend/app/runtimes/tts/tts_runtime.py, backend/tests/unit/test_hardware_profiler.py, backend/tests/unit/test_slice1_stt_turn_units.py, backend/tests/unit/test_slice2_tts_turn_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_profiler.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice1_stt_turn_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice2_tts_turn_units.py -q`
+    ```text
+    .... [100%]
+    4 passed in 1.48s
+    .................. [100%]
+    18 passed in 0.30s
+    ............. [100%]
+    13 passed in 1.71s
+    ```
+
+- 2026-04-04 08:10
+  - Summary: Sub-Slice 0.0.4 was completed by enforcing readiness-gated STT device selection so CUDA is selected only when STT CUDA evidence is verified, while explicit CPU-safe degradation is selected when CUDA readiness is not verified.
+  - Scope: config/hardware/stt_gpu_cuda.json, backend/app/hardware/preflight.py, backend/app/runtimes/stt/stt_runtime.py, backend/tests/unit/test_hardware_readiness.py, backend/tests/unit/test_slice1_stt_turn_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice1_stt_turn_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice1_stt_turn_live.py -v -s`
+    ```text
+    .................... [100%]
+    20 passed in 0.28s
+    .................. [100%]
+    18 passed in 0.26s
+    backend/tests/runtime/test_slice1_stt_turn_live.py::test_voice_turn_live ... PASSED
+    1 passed in 81.80s (0:01:21)
+    ```
+
+- 2026-04-04 07:24
+  - Summary: Sub-Slice 0.0.3 was completed by adding the hardware provisioning/preflight owner and expanding hardware-readiness unit coverage for manifest-consumed additive package detection, controlled install invocation, verification checks, and deterministic readiness result output.
+  - Scope: backend/app/hardware/preflight.py, backend/tests/unit/test_hardware_readiness.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_profiler.py -q`
+    ```text
+    ................. [100%]
+    17 passed in 0.43s
+    .. [100%]
+    2 passed in 0.02s
+    ```
+
+- 2026-04-04 07:12
+  - Summary: Sub-Slice 0.0.2 was completed by adding a hardware fact-to-manifest resolver module and expanding hardware-readiness unit coverage for deterministic additive multi-manifest resolution.
+  - Scope: backend/app/hardware/profile_resolver.py, backend/tests/unit/test_hardware_readiness.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_profiler.py -q`
+    ```text
+    ........... [100%]
+    11 passed in 0.05s
+    .. [100%]
+    2 passed in 0.02s
+    ```
+
+- 2026-04-04 06:57
+  - Summary: Sub-Slice 0.0.1 was completed by adding STT hardware-profile manifests under `config/hardware/` and adding unit coverage in `backend/tests/unit/test_hardware_readiness.py`.
+  - Scope: config/hardware/stt_base_cpu.json, config/hardware/stt_gpu_noncuda.json, config/hardware/stt_gpu_cuda.json, config/hardware/stt_npu.json, backend/tests/unit/test_hardware_readiness.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_profiler.py -q`
+    ```text
+    ..... [100%]
+    5 passed in 0.05s
+    .. [100%]
+    2 passed in 0.05s
+    ```
+
 - 2026-04-03 10:52
   - Summary: Slice 4 unit-test housekeeping was completed by consolidating all Slice 4 unit coverage into `backend/tests/unit/test_slice4_interruption_units.py` and retiring the redundant per-sub-slice Slice 4 unit test files.
   - Scope: backend/tests/unit/test_slice4_interruption_units.py, backend/tests/unit/test_slice4_1_interruption_contract_units.py, backend/tests/unit/test_slice4_2_barge_in_detector_units.py, backend/tests/unit/test_slice4_3_interruptible_playback_units.py, backend/tests/unit/test_slice4_4_interruptible_voice_orchestration_units.py, CHANGE_LOG.md

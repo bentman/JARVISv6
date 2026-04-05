@@ -6,7 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from backend.app.core.capabilities import CapabilityFlags, FullCapabilityReport, HardwareProfile
+from backend.app.core.capabilities import (
+    BackendReadiness,
+    CapabilityFlags,
+    FullCapabilityReport,
+    HardwareProfile,
+)
 from backend.app.models.catalog import get_tts_model_entry
 from backend.app.models.manager import verify_model
 from backend.app.personality.schema import PersonalityProfile
@@ -50,6 +55,17 @@ def _report() -> FullCapabilityReport:
             requires_degraded_mode=False,
             stt_recommended_runtime="faster-whisper",
             stt_recommended_model="whisper-large-v3-turbo",
+            tts_recommended_runtime="kokoro",
+            tts_recommended_model="kokoro-v1.0",
+            tts_recommended_device="cpu",
+        ),
+        readiness=BackendReadiness(
+            stt_cuda_ready=True,
+            stt_cpu_ready=True,
+            stt_selected_device="cuda",
+            tts_cuda_ready=False,
+            tts_cpu_ready=True,
+            tts_selected_device="cpu",
         ),
     )
 
@@ -115,8 +131,33 @@ def test_tts_runtime_selector_returns_instance_when_available(monkeypatch: pytes
             return True
 
     monkeypatch.setattr("backend.app.runtimes.tts.tts_runtime.LocalTTSRuntime", FakeRuntime)
-    selected = select_tts_runtime(_report())
+    report = _report()
+    report.flags.tts_recommended_device = "cpu"
+    selected = select_tts_runtime(report)
     assert isinstance(selected, FakeRuntime)
+
+
+def test_tts_runtime_selector_respects_cuda_recommendation(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeRuntime:
+        def __init__(self, model_name: str, device: str = "cpu") -> None:
+            self.model_name = model_name
+            self.device = device
+
+        def is_available(self) -> bool:
+            return True
+
+    monkeypatch.setattr("backend.app.runtimes.tts.tts_runtime.LocalTTSRuntime", FakeRuntime)
+    report = _report()
+    report.flags.tts_recommended_device = "cuda"
+    selected = select_tts_runtime(report)
+    assert isinstance(selected, FakeRuntime)
+    assert selected.device == "cuda"
+
+
+def test_tts_runtime_selector_returns_none_for_unavailable_recommended_device() -> None:
+    report = _report()
+    report.flags.tts_recommended_device = "unavailable"
+    assert select_tts_runtime(report) is None
 
 
 def test_play_audio_raises_on_missing_file() -> None:

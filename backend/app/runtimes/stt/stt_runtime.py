@@ -16,7 +16,15 @@ def select_stt_runtime(report: FullCapabilityReport) -> STTBase | None:
             return None
 
         model_name = report.flags.stt_recommended_model
-        device = report.flags.stt_recommended_device
+        selected_device = report.flags.stt_recommended_device
+        if selected_device not in {"cuda", "cpu"}:
+            return None
+
+        if selected_device == "cuda":
+            device = "cuda"
+        else:
+            device = "cpu"
+
         cache_key = (model_name, device)
 
         cached = _STT_RUNTIME_CACHE.get(cache_key)
