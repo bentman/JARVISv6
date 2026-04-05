@@ -6,9 +6,7 @@
     "npu_available": true
   },
   "additive_requirements": {
-    "python_packages": [
-      "onnxruntime>=1.17"
-    ]
+    "python_packages": [ ]
   },
   "notes": "Detector-derived NPU-present class with additive package needed for current NPU runtime path checks."
 }
