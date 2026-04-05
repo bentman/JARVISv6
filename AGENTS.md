@@ -13,7 +13,8 @@ Dependency source of truth:
 - `backend/requirements.txt` is the single source of truth for backend Python dependencies.
 - If a new backend package is required for an approved code change, declare it in the proposal and update/install backend/requirements.txt in backend/.venv before implementing code that depends on it.
 - Any backend dependency add, remove, or version change must update `backend/requirements.txt` in the same task.
-- `backend/requirements.txt` entries must be grouped with clear category headers by backend area (for example: `# backend/core`, `# backend/main`, `# backend/memory`).
+- `backend/requirements.txt` entries must be grouped with clear category headers by backend area (for example: `# Hardware`, `# Testing`).
+- Hardware-specific additive Python dependencies must be declared in config/hardware/hw_*.json, not added to backend/requirements.txt, unless they are base requirements for all hosts.
 - Default version operator is `>=`.
 - Use `==` only when there is a strong, explicit reason and it is documented in the task evidence.
 
