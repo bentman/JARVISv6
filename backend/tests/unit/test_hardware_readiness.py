@@ -163,7 +163,6 @@ def test_resolver_combined_hardware_matches_multiple_manifests_additively() -> N
         "nvidia-cublas-cu12>=12.0",
         "nvidia-cudnn-cu12>=9.0",
         "torch>=2.11.0",
-        "onnxruntime>=1.17",
     ]
     assert result["merged_additive_requirements"]["install"]["pip_extra_index_urls"] == [
         "https://download.pytorch.org/whl/cu128"

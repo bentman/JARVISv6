@@ -16,6 +16,8 @@ if str(REPO_ROOT) not in sys.path:
 
 from backend.app.hardware.preflight import derive_stt_device_readiness, run_hardware_preflight
 from backend.app.hardware.profiler import run_profiler
+from backend.app.models.catalog import get_model_entry, get_tts_model_entry
+from backend.app.models.manager import verify_model
 
 
 SUITES: dict[str, str] = {
@@ -118,6 +120,59 @@ def run_runtime_readiness_gate(logger: ValidationLogger) -> SuiteResult:
         return SuiteResult(status="FAIL", summary=message)
 
     message = f"STT readiness proven for selected device '{selected_device}'; proceeding to runtime tests"
+    logger.log(f"[PASS] {message}")
+    return SuiteResult(status="PASS", summary=message)
+
+
+def _resolve_runtime_voice_model_prerequisites() -> list[dict[str, str]]:
+    report = run_profiler()
+
+    stt_model = report.flags.stt_recommended_model
+    stt_entry = get_model_entry(stt_model)
+    stt_local_dir = stt_entry.get("local_dir")
+    if not isinstance(stt_local_dir, str) or not stt_local_dir.strip():
+        raise RuntimeError(f"invalid STT catalog local_dir for model '{stt_model}'")
+
+    tts_model = report.flags.tts_recommended_model
+    tts_entry = get_tts_model_entry(tts_model)
+    tts_local_dir = tts_entry.get("local_dir")
+    if not isinstance(tts_local_dir, str) or not tts_local_dir.strip():
+        raise RuntimeError(f"invalid TTS catalog local_dir for model '{tts_model}'")
+
+    return [
+        {"family": "stt", "model": stt_model, "local_dir": stt_local_dir},
+        {"family": "tts", "model": tts_model, "local_dir": tts_local_dir},
+    ]
+
+
+def run_runtime_voice_model_prereq_gate(logger: ValidationLogger) -> SuiteResult:
+    """Fail-closed voice-model prerequisite gate before runtime suite execution."""
+
+    logger.header("runtime voice model prerequisite gate")
+    try:
+        requirements = _resolve_runtime_voice_model_prerequisites()
+    except Exception as exc:
+        message = f"voice-model prerequisite resolution failed before runtime tests: {exc}"
+        logger.log(f"[PREREQ FAILED] {message}")
+        return SuiteResult(status="FAIL", summary=message)
+
+    missing: list[str] = []
+    for requirement in requirements:
+        family = requirement["family"]
+        model = requirement["model"]
+        local_dir = requirement["local_dir"]
+        if verify_model(local_dir, family=family):
+            logger.log(f"[PREREQ PASS] {family}:{model} present at {local_dir}")
+            continue
+        missing.append(f"{family}:{model} -> {local_dir}")
+        logger.log(f"[PREREQ FAILED] {family}:{model} missing at {local_dir}")
+
+    if missing:
+        message = "missing required voice-model assets: " + "; ".join(missing)
+        logger.log(f"[PREREQ FAILED] {message}")
+        return SuiteResult(status="FAIL", summary=message)
+
+    message = "required voice-model assets are present; proceeding to runtime readiness gate"
     logger.log(f"[PASS] {message}")
     return SuiteResult(status="PASS", summary=message)
 
@@ -269,6 +324,29 @@ def main(argv: list[str]) -> int:
     results: dict[str, SuiteResult] = {}
 
     if "runtime" in selected_suites:
+        prereq_gate = run_runtime_voice_model_prereq_gate(logger)
+        if prereq_gate.status == "FAIL":
+            results["runtime"] = prereq_gate
+            if "unit" in selected_suites:
+                logger.header("unit tests")
+                logger.log("[SKIP] unit suite not executed because runtime voice-model prerequisite gate failed")
+                results["unit"] = SuiteResult(
+                    status="PASS_WITH_SKIPS",
+                    summary="0 tests, 1 skipped (runtime voice-model prerequisite gate failed)",
+                )
+
+            logger.header("Validation Summary")
+            for suite_name in selected_suites:
+                logger.log(f"{suite_name.upper()}: {results[suite_name].status}")
+            logger.log("=" * 60)
+            logger.log("")
+            logger.log("[INVARIANTS]")
+            for suite_name in selected_suites:
+                logger.log(f"{suite_name.upper()}={results[suite_name].status}")
+            logger.log("\n[FAIL] Validation failed - runtime voice-model prerequisite gate did not pass")
+            logger.save()
+            return 1
+
         gate = run_runtime_readiness_gate(logger)
         if gate.status == "FAIL":
             results["runtime"] = gate

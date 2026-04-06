@@ -15,6 +15,40 @@
 
 ## Entries
 
+- 2026-04-06 05:10
+  - Summary: `backend/tests/unit/test_hardware_readiness.py` was updated to remove stale `onnxruntime>=1.17` from the expected additive `python_packages` list in `test_resolver_combined_hardware_matches_multiple_manifests_additively`, aligning the unit expectation to the current manifest/resolver contract.
+  - Scope: backend/tests/unit/test_hardware_readiness.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py::test_resolver_combined_hardware_matches_multiple_manifests_additively -q -vv`
+    ```text
+    backend/tests/unit/test_hardware_readiness.py::test_resolver_combined_hardware_matches_multiple_manifests_additively PASSED
+    1 passed in 0.07s
+    ```
+
+- 2026-04-05 15:08
+  - Summary: `scripts/validate_backend.py` was updated to add a runtime voice-model prerequisite gate that verifies required STT/TTS assets are present before runtime validation begins, failing early with explicit prereq-failure output when assets are missing while keeping the harness validation-only (no model download/initialization).
+  - Scope: scripts/validate_backend.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m py_compile scripts/validate_backend.py`; `backend/.venv/Scripts/python -c "from backend.app.hardware.profiler import run_profiler; from backend.app.models.catalog import get_model_entry,get_tts_model_entry; from backend.app.models.manager import verify_model; r=run_profiler(); stt=r.flags.stt_recommended_model; tts=r.flags.tts_recommended_model; stt_dir=get_model_entry(stt).get('local_dir'); tts_dir=get_tts_model_entry(tts).get('local_dir'); print('stt',stt,stt_dir,verify_model(stt_dir,'stt')); print('tts',tts,tts_dir,verify_model(tts_dir,'tts'))"`; `backend/.venv/Scripts/python -c "import scripts.validate_backend as vb; calls={'run_pytest_suite':0}; vb._resolve_runtime_voice_model_prerequisites=lambda:[{'family':'stt','model':'m1','local_dir':'missing/stt'},{'family':'tts','model':'m2','local_dir':'missing/tts'}]; vb.verify_model=lambda local_dir,family='stt':False; vb.run_pytest_suite=lambda logger,suite_name,suite_path:(calls.__setitem__('run_pytest_suite',calls['run_pytest_suite']+1) or vb.SuiteResult(status='PASS',summary='stub')); rc=vb.main(['--scope','runtime']); print('rc',rc); print('run_pytest_suite_calls',calls['run_pytest_suite'])"`; `backend/.venv/Scripts/python -c "import scripts.validate_backend as vb; calls={'run_runtime_readiness_gate':0,'run_pytest_suite':0}; vb._resolve_runtime_voice_model_prerequisites=lambda:[{'family':'stt','model':'m1','local_dir':'present/stt'},{'family':'tts','model':'m2','local_dir':'present/tts'}]; vb.verify_model=lambda local_dir,family='stt':True; vb.run_runtime_readiness_gate=lambda logger:(calls.__setitem__('run_runtime_readiness_gate',calls['run_runtime_readiness_gate']+1) or vb.SuiteResult(status='PASS',summary='ready')); vb.run_pytest_suite=lambda logger,suite_name,suite_path:(calls.__setitem__('run_pytest_suite',calls['run_pytest_suite']+1) or vb.SuiteResult(status='PASS',summary='stub')); rc=vb.main(['--scope','runtime']); print('rc',rc); print('run_runtime_readiness_gate_calls',calls['run_runtime_readiness_gate']); print('run_pytest_suite_calls',calls['run_pytest_suite'])"`
+    ```text
+    backend/.venv/Scripts/python -m py_compile scripts/validate_backend.py  (executed successfully; no output)
+    stt whisper-large-v3-turbo models/stt/whisper-large-v3-turbo True
+    tts kokoro-v1.0 models/tts/kokoro-v1.0 True
+    [PREREQ FAILED] stt:m1 missing at missing/stt
+    [PREREQ FAILED] tts:m2 missing at missing/tts
+    rc 1 | run_pytest_suite_calls 0
+    [PREREQ PASS] stt:m1 present at present/stt
+    [PREREQ PASS] tts:m2 present at present/tts
+    rc 0 | run_runtime_readiness_gate_calls 1 | run_pytest_suite_calls 1
+    ```
+
+- 2026-04-05 10:56
+  - Summary: `backend/app/core/settings.py` environment-contract alignment was completed by reading `OLLAMA_BASE_URL` in place of `OLLAMA_HOST`, while preserving existing in-code defaults when env values are absent.
+  - Scope: backend/app/core/settings.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m py_compile backend/app/core/settings.py`; `backend/.venv/Scripts/python -c "from backend.app.core.settings import *; print('settings import OK')"`
+    ```text
+    backend/.venv/Scripts/python -m py_compile backend/app/core/settings.py  (executed successfully; no output)
+    settings import OK
+    ```
+
 - 2026-04-05 01:27
   - Summary: Windows CUDA DLL/bootstrap ownership was normalized so `backend/app/hardware/preflight.py` is the single setup owner, and duplicate STT runtime DLL/bootstrap setup in `backend/app/runtimes/stt/local_runtime.py` was removed by delegation to preflight ownership with behavior preserved.
   - Scope: backend/app/hardware/preflight.py, backend/app/runtimes/stt/local_runtime.py, CHANGE_LOG.md
