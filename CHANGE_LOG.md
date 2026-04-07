@@ -15,6 +15,22 @@
 
 ## Entries
 
+- 2026-04-06 09:35
+  - Summary: `repo_tree.md` was minimally aligned to reduce near-term Slice 5A naming/placement ambiguity by documenting the current `services`, `config/personality`, and `hardware` continuity boundaries without broad tree reconciliation.
+  - Scope: `repo_tree.md`
+  - Evidence: `repo_tree.md` now explicitly represents `backend/app/services/turn_service.py` as the canonical transcript-bound turn executor, clarifies `task_service.py` as the host-facing task/text service slot, adds `config/personality/jarvis_personality.json` as the canonical identity/persona source alongside `default.yaml` as the runtime overlay/tuning profile, and corrects `backend/app/hardware/profiles.py` to `profile_resolver.py` with an updated boundary description.
+    ```text
+    services:
+    - added turn_service.py  # canonical transcript-bound turn executor shared by voice/text paths
+    - clarified task_service.py  # host-facing task/text service slot (delegates to canonical turn execution)
+    config/personality:
+    - added jarvis_personality.json  # canonical identity/persona source
+    - clarified default.yaml  # runtime personality overlay/tuning profile
+    hardware:
+    - profiles.py -> profile_resolver.py
+    - updated comment: maps detector facts to additive hardware profile manifests/readiness inputs
+    ```
+
 - 2026-04-06 05:10
   - Summary: `backend/tests/unit/test_hardware_readiness.py` was updated to remove stale `onnxruntime>=1.17` from the expected additive `python_packages` list in `test_resolver_combined_hardware_matches_multiple_manifests_additively`, aligning the unit expectation to the current manifest/resolver contract.
   - Scope: backend/tests/unit/test_hardware_readiness.py, CHANGE_LOG.md

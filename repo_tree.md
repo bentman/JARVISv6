@@ -61,7 +61,7 @@ backend/
 │  │  ├─ storage.py                  # artifact persistence helpers
 │  │  ├─ trace_writer.py             # trace writing utilities
 │  │  └─ turn_artifact.py            # canonical turn artifact definitions
-│  ├─ cache/                          # cache code layer (access, policy, client); distinct from top-level cache/ data directory
+│  ├─ cache/                         # cache code layer (access, policy, client); distinct from top-level cache/ data directory
 │  │  ├─ manager.py                  # cache access layer
 │  │  ├─ policies.py                 # cache policy rules
 │  │  ├─ redis_client.py             # redis integration
@@ -93,7 +93,7 @@ backend/
 │  │  │  ├─ npu_detector.py          # NPU detection
 │  │  │  └─ os_detector.py           # OS/platform detection
 │  │  ├─ profiler.py                 # main callable hardware profiler
-│  │  └─ profiles.py                 # maps raw detection -> runtime profiles
+│  │  └─ profile_resolver.py         # maps detector facts to additive hardware profile manifests/readiness inputs
 │  ├─ memory/
 │  │  ├─ episodic.py                 # episodic memory implementation
 │  │  ├─ manager.py                  # memory coordination layer
@@ -140,7 +140,8 @@ backend/
 │  ├─ services/
 │  │  ├─ diagnostics_service.py      # diagnostics-facing service layer
 │  │  ├─ session_service.py          # session service layer
-│  │  ├─ task_service.py             # normal task/conversation service layer
+│  │  ├─ task_service.py             # host-facing task/text service slot (delegates to canonical turn execution)
+│  │  ├─ turn_service.py             # canonical transcript-bound turn executor shared by voice/text paths
 │  │  └─ voice_service.py            # voice-facing service layer
 │  └─ tools/
 │     ├─ filesystem/                 # filesystem tools
@@ -177,7 +178,8 @@ config/
 │  └─ wake.yaml                      # wake-word runtime config
 ├─ personality/
 │  ├─ concise.yaml                   # concise personality profile
-│  ├─ default.yaml                   # default personality profile
+│  ├─ default.yaml                   # runtime personality overlay/tuning profile
+│  ├─ jarvis_personality.json        # canonical identity/persona source
 │  └─ warm.yaml                      # warm personality profile
 └─ prompts/
    ├─ planner/                       # planner prompt assets
