@@ -15,6 +15,17 @@
 
 ## Entries
 
+- 2026-04-07 11:40
+  - Summary: Sub-Slice 5A.1 startup-service implementation was completed by adding a bounded startup/readiness summary service and targeted unit coverage without introducing voice-resolution behavior or later 5A sub-slice surfaces.
+  - Scope: backend/app/services/startup_service.py, backend/tests/unit/test_slice5a_startup_service_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/services/startup_service.py`; `backend/.venv/Scripts/python -c "from backend.app.services.startup_service import run_startup, print_startup_summary; summary, report, personality = run_startup(); print_startup_summary(summary); print('stt_ready:', summary.stt_ready); print('personality:', summary.personality_display_name)"`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5a_startup_service_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5a_startup_service_units.py -q`
+    ```text
+    PASS compile: Compiling 'backend/app/services/startup_service.py'...
+    PASS startup summary: Profile/STT/TTS/LLM/Personality printed | stt_ready: True | personality: Jarvis
+    FAIL initial unit run: 1 failed, 3 passed (assertion used "voice" substring and matched banner text "Local Voice Assistant")
+    PASS rerun after in-scope test assertion correction: 4 passed in 0.14s
+    ```
+
 - 2026-04-06 09:35
   - Summary: `repo_tree.md` was minimally aligned to reduce near-term Slice 5A naming/placement ambiguity by documenting the current `services`, `config/personality`, and `hardware` continuity boundaries without broad tree reconciliation.
   - Scope: `repo_tree.md`
