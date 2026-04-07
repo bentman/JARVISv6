@@ -843,10 +843,10 @@ Notes:
 Goal: add assistant presence behaviors and polish after the application shell/start path is established.
 
 Scope:
-- Wake word
 - Desktop shell polish
 - Personality shaping controls
 - Assistant presence behaviors
+- Wake word
 - Higher-quality interaction feel around the already-working application shell
 
 Acceptance intent:
