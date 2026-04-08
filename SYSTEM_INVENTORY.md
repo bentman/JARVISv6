@@ -25,6 +25,12 @@
 
 ## Inventory
 
+- Capability: Application Shell Contract and Honest Start Path (Slice 5A) verified - 2026-04-07 21:48
+  - State: Verified
+  - Location: `backend/app/services/startup_service.py`, `backend/app/services/task_service.py`, `scripts/run_jarvis.py`, `backend/tests/unit/test_slice5a_startup_service_units.py`, `backend/tests/unit/test_slice5a_task_service_units.py`, `backend/tests/unit/test_slice5a_shell_units.py`
+  - Validation: `backend/.venv/Scripts/python -m compileall backend/app/services/startup_service.py`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5a_startup_service_units.py -q`; `backend/.venv/Scripts/python -m compileall backend/app/services/task_service.py`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5a_task_service_units.py -q`; `backend/.venv/Scripts/python -m compileall scripts/run_jarvis.py`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5a_shell_units.py -q`; `backend/.venv/Scripts/python scripts/run_jarvis.py --turns 0`; `echo "What is your name?" | ./backend/.venv/Scripts/python scripts/run_jarvis.py --turns 1`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice4_interruption_live.py -v -s`
+  - Notes: Slice 5A verification covers 5A.1 startup service, 5A.2 text-turn task service, 5A.3 bounded local shell adapter, and latest regression confirmation (`1 passed in 55.47s`); `scripts/run_jarvis.py` remains a bounded proving host, not the durable application surface.
+
 - Capability: Hardware Profile Provisioning and Backend Readiness Rail (Slice 0.0) verified - 2026-04-05 01:27
   - State: Verified
   - Location: `config/hardware/hw_cpu_base.json`, `config/hardware/hw_gpu_present.json`, `config/hardware/hw_gpu_noncuda.json`, `config/hardware/hw_gpu_nvidia_cuda.json`, `config/hardware/hw_npu_present.json`, `backend/app/hardware/profile_resolver.py`, `backend/app/hardware/preflight.py`, `backend/app/hardware/profiler.py`, `backend/app/core/capabilities.py`, `backend/app/runtimes/stt/stt_runtime.py`, `backend/app/runtimes/tts/tts_runtime.py`, `scripts/bootstrap_readiness.py`

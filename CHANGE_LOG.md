@@ -15,6 +15,26 @@
 
 ## Entries
 
+- 2026-04-07 21:45
+  - Summary: Slice 5A regression confirmation was completed by re-running the live interruption gate and confirming a passing result on the latest evidence while noting known operator-timed intermittency risk.
+  - Scope: backend/tests/runtime/test_slice4_interruption_live.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice4_interruption_live.py -v -s`
+    ```text
+    PASS regression retest: backend/tests/runtime/test_slice4_interruption_live.py::test_barge_in_live ... PASSED
+    1 passed in 55.47s
+    Interpretation: no stable Slice 5A code-regression signal on latest evidence; known intermittency risk remains for this live/operator-timed interruption gate.
+    ```
+
+- 2026-04-07 21:11
+  - Summary: Corrective evidence entry appended for Sub-Slice 5A.3 closure truth by recording fresh real host-path validation through `scripts/run_jarvis.py` startup-only and bounded typed-turn execution, confirming the bounded local shell adapter acceptance path beyond prior compile/unit-only proof.
+  - Scope: scripts/run_jarvis.py, backend/tests/unit/test_slice5a_startup_service_units.py, backend/tests/unit/test_slice5a_task_service_units.py, backend/tests/unit/test_slice5a_shell_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python scripts/run_jarvis.py --turns 0`; `echo "What is your name?" | ./backend/.venv/Scripts/python scripts/run_jarvis.py --turns 1`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5a_startup_service_units.py backend/tests/unit/test_slice5a_task_service_units.py backend/tests/unit/test_slice5a_shell_units.py -q`
+    ```text
+    PASS startup-only host path: startup summary printed with profile/STT/TTS/LLM/personality and clean exit
+    PASS bounded typed turn: [STATE] IDLE → REASONING → RESPONDING → IDLE | [RESPONSE] My name is Jarvis...
+    PASS targeted Slice 5A units: 11 passed in 0.78s
+    ```
+
 - 2026-04-07 19:49
   - Summary: Sub-Slice 5A.3 bounded local-shell adapter implementation was completed by adding a thin proving-host script that reuses existing startup/text/voice service boundaries with shared session/memory continuity, explicit turn controls, STT-gated voice command behavior, and fail-fast handling only when STT/TTS/LLM are all unavailable, without service refactors or later-slice expansion.
   - Scope: scripts/run_jarvis.py, backend/tests/unit/test_slice5a_shell_units.py, CHANGE_LOG.md
