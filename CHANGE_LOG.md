@@ -15,6 +15,35 @@
 
 ## Entries
 
+- 2026-04-07 19:49
+  - Summary: Sub-Slice 5A.3 bounded local-shell adapter implementation was completed by adding a thin proving-host script that reuses existing startup/text/voice service boundaries with shared session/memory continuity, explicit turn controls, STT-gated voice command behavior, and fail-fast handling only when STT/TTS/LLM are all unavailable, without service refactors or later-slice expansion.
+  - Scope: scripts/run_jarvis.py, backend/tests/unit/test_slice5a_shell_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall scripts/run_jarvis.py`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5a_shell_units.py -q`
+    ```text
+    PASS compile: Compiling 'scripts/run_jarvis.py'...
+    PASS unit: .... [100%]
+    4 passed in 1.54s
+    ```
+
+- 2026-04-07 18:41
+  - Summary: Sub-Slice 5A.2 task-service implementation was completed by adding a host-agnostic typed text-turn service boundary that wraps result state and delegates continuity execution to the existing turn engine without adding shell output, STT/TTS/audio behavior, or duplicate conversation logic.
+  - Scope: backend/app/services/task_service.py, backend/tests/unit/test_slice5a_task_service_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/services/task_service.py`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5a_task_service_units.py -q`
+    ```text
+    PASS compile: Compiling 'backend/app/services/task_service.py'...
+    PASS unit: ... [100%]
+    3 passed in 0.13s
+    ```
+
+- 2026-04-07 18:29
+  - Summary: Slice-doc sanitization was completed as a bounded doc-only correction pass that removed unsupported personality-to-voice coupling from Slice 5A/5B planning docs while preserving landed 5A.1 startup-service scope.
+  - Scope: 20260406-slice_5a.md, 20260406-slice_5b.md, CHANGE_LOG.md
+  - Evidence: `Select-String -Path 20260406-slice_5a.md,20260406-slice_5b.md -Pattern 'Personality-driven voice selection','Sub-Slice 5A.2 — Extend Personality Resolver for Voice Selection','voice_name_override','voice_resolver','resolve_voice_from_personality','voice selection override' -SimpleMatch`; `Select-String -Path 20260406-slice_5a.md -Pattern 'Sub-Slice 5A.1 — Startup Service and Readiness Summary','backend/app/services/startup_service.py' -SimpleMatch`
+    ```text
+    Confirmed removed from docs: personality-driven voice-selection scope in 5A, and voice_name_override/resolver coupling in 5B.
+    Confirmed preserved in 5A: Sub-Slice 5A.1 startup-service contract language and startup_service.py references.
+    ```
+
 - 2026-04-07 11:40
   - Summary: Sub-Slice 5A.1 startup-service implementation was completed by adding a bounded startup/readiness summary service and targeted unit coverage without introducing voice-resolution behavior or later 5A sub-slice surfaces.
   - Scope: backend/app/services/startup_service.py, backend/tests/unit/test_slice5a_startup_service_units.py, CHANGE_LOG.md
