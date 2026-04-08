@@ -2,9 +2,7 @@
 
 ## Vision
 
-JARVISv6 is a local-first, voice-first personal assistant designed for real conversational interaction on user-owned hardware.
-
-It is not a chatbot with voice added later. It is a real-time conversation engine with text as a fallback surface.
+JARVISv6 is a local-first, voice-first personal assistant designed for real conversational interaction on user-owned hardware. It is not a chatbot with voice added later. It is a real-time conversation engine with text as a fallback surface.
 
 The target experience is closer to J.A.R.V.I.S. than a browser chat app:
 - the user can speak naturally
