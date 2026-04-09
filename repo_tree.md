@@ -26,7 +26,7 @@ JARVISv6/
 ├─ desktop/                           # desktop shell (tauri/native integration, overlays, tray, hotkeys)
 ├─ docs/                              # architecture, runtime, and decision records
 ├─ frontend/                          # web/debug/operator surface
-├─ models/                            # local model artifacts and downloaded runtime assets
+├─ models/                            # local model artifacts and downloaded runtime assets (llm, stt, tts, wake, etc.)
 ├─ reports/                           # validation, diagnostics, benchmark outputs
 ├─ scripts/                           # bootstrap, validation, packaging, utility scripts
 ├─ .env.example
