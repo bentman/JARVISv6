@@ -20,6 +20,8 @@ REQUIRED_FIELDS = [
     "humor_policy",
     "response_style",
     "acknowledgment_style",
+    "acknowledgment_phrase_style",
+    "wake_response_sound",
     "interruption_style",
     "voice_pacing",
     "voice_energy",
@@ -90,6 +92,8 @@ def load_personality_profile(name: str = "default") -> PersonalityProfile:
     data["identity_summary"] = identity_base["identity_summary"]
     if "tone" not in data:
         data["tone"] = identity_base["tone"]
+    data.setdefault("acknowledgment_phrase_style", "minimal")
+    data.setdefault("wake_response_sound", "none")
 
     missing = [field for field in REQUIRED_FIELDS if field not in data]
     if missing:
@@ -109,6 +113,8 @@ def load_personality_profile(name: str = "default") -> PersonalityProfile:
         humor_policy=str(data["humor_policy"]),
         response_style=str(data["response_style"]),
         acknowledgment_style=str(data["acknowledgment_style"]),
+        acknowledgment_phrase_style=str(data["acknowledgment_phrase_style"]),
+        wake_response_sound=str(data["wake_response_sound"]),
         interruption_style=str(data["interruption_style"]),
         voice_pacing=str(data["voice_pacing"]),
         voice_energy=str(data["voice_energy"]),

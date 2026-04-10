@@ -21,3 +21,5 @@ class PersonalityProfile:
     voice_energy: str
     safety_overrides: list[str]
     enabled: bool
+    acknowledgment_phrase_style: str = "minimal"
+    wake_response_sound: str = "none"

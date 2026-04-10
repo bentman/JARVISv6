@@ -15,6 +15,110 @@
 
 ## Entries
 
+- 2026-04-09 22:50
+  - Summary: Sub-Slice 5B.5 bounded closeout gate was completed by adding `backend/tests/unit/test_slice5b_presence_units.py` for cross-slice presence/contract stability checks and validating the approved deterministic 5B unit closeout set; this gate confirmed Slice 5B is ready for inventory closeout without reopening profiler/readiness scope.
+  - Scope: backend/tests/unit/test_slice5b_presence_units.py, backend/tests/unit/test_slice5b1_wake_runtime_units.py, backend/tests/unit/test_slice5b2_personality_schema_units.py, backend/tests/unit/test_slice5b3_acknowledgment_units.py, backend/tests/unit/test_slice5a_shell_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5b_presence_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5b1_wake_runtime_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5b2_personality_schema_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5b3_acknowledgment_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5a_shell_units.py -q`
+    ```text
+    PASS closeout units: test_slice5b_presence_units.py | 5 passed in 1.05s
+    PASS wake units: test_slice5b1_wake_runtime_units.py | 4 passed in 0.07s
+    PASS personality schema units: test_slice5b2_personality_schema_units.py | 2 passed in 0.03s
+    PASS acknowledgment units: test_slice5b3_acknowledgment_units.py | 6 passed in 0.48s
+    PASS shell regression units: test_slice5a_shell_units.py | 8 passed in 4.01s
+    Outcome: Slice 5B bounded deterministic closeout gate passed; ready for inventory closeout
+    ```
+
+- 2026-04-09 22:29
+  - Summary: Sub-Slice 5B.4 bounded wake/runtime proving-host integration was completed by extending `scripts/run_jarvis.py` to consume the existing wake abstraction (`select_wake_runtime()`), preserve push-to-talk behavior on wake-unavailable startup, consume wake-flag triggers to dispatch `run_voice_turn(...)`, count wake-triggered turns toward `--turns`, and stop wake runtime cleanly on exit; closure evidence was finalized via deterministic shell-unit proof instead of interactive Agent/Cline host proof.
+  - Scope: scripts/run_jarvis.py, backend/tests/unit/test_slice5a_shell_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall scripts/run_jarvis.py`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5a_shell_units.py -q`
+    ```text
+    PASS compile: scripts/run_jarvis.py
+    PASS deterministic shell proof: 8 passed in 3.43s
+    Proof coverage includes wake-unavailable push-to-talk path, wake-flag-triggered voice dispatch without manual 'v', wake-trigger turn counting toward --turns, and wake runtime stop on exit
+    Interactive Agent/Cline run was treated as non-closure surface; deterministic unit proof used for 5B.4 closure
+    ```
+
+- 2026-04-09 21:51
+  - Summary: Sub-Slice 5B.3 bounded acknowledgment behavior was completed by adding a personality acknowledgment module with deterministic style-based phrase generation and safe optional acknowledgment playback, then integrating the acknowledgment hook into `run_voice_turn(...)` after transcript/`TRANSCRIBING` and before `run_turn(...)` using one in-turn TTS resolution reused for acknowledgment and response synthesis; `wake_response_sound` remained declarative only and no wake listener/shell/readiness/profiler/key-coupling expansion was added.
+  - Scope: backend/app/personality/acknowledgment.py, backend/app/services/voice_service.py, backend/tests/unit/test_slice5b3_acknowledgment_units.py, backend/tests/unit/test_slice2_tts_turn_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/personality/acknowledgment.py backend/app/services/voice_service.py`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5b3_acknowledgment_units.py -q`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice2_tts_turn_units.py -q -k acknowledgment_hook_invoked_before_run_turn`
+    ```text
+    PASS compile: acknowledgment.py | voice_service.py
+    PASS targeted acknowledgment units: 6 passed in 0.49s
+    PASS insertion-point proof: 1 passed, 13 deselected in 0.46s
+    Boundaries preserved: wake_response_sound declarative only; no wake listener integration, shell changes, readiness/profiler changes, new personality keys, or resolver/voice coupling added
+    ```
+
+- 2026-04-09 21:38
+  - Summary: Sub-Slice 5B.1 bounded follow-through corrections were completed by adding the missing `pvporcupine` base dependency declaration and widening wake runtime selector typing to the `WakeWordBase` boundary while preserving wake runtime behavior; `.env.example` wake-key documentation was confirmed already present and remained unchanged.
+  - Scope: backend/requirements.txt, backend/app/runtimes/wake/wakeword_runtime.py, .env.example, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/runtimes/wake/wakeword_runtime.py`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5b1_wake_runtime_units.py -q`; dependency presence check `^pvporcupine>=3\.0$` in `backend/requirements.txt`; env key presence check `PVPORCUPINE_MODEL_PATH|PICOVOICE_ACCESS_KEY` in `.env.example`
+    ```text
+    PASS dependency declaration: pvporcupine>=3.0 present in backend/requirements.txt
+    PASS env docs confirmation: PVPORCUPINE_MODEL_PATH and PICOVOICE_ACCESS_KEY present in .env.example (no file change)
+    PASS compile: wakeword_runtime.py
+    PASS targeted wake units: 4 passed in 0.07s
+    ```
+
+- 2026-04-09 21:21
+  - Summary: Sub-Slice 5B.2 personality schema extension was completed as a bounded additive schema/config update by adding `acknowledgment_phrase_style` and `wake_response_sound` defaults, preserving `acknowledgment_style` as a separate field with no alias/remap, and keeping the existing loader default-then-required validation pattern; no wake behavior, acknowledgment runtime behavior, shell changes, or voice/resolver coupling were added.
+  - Scope: backend/app/personality/schema.py, backend/app/personality/loader.py, config/personality/default.yaml, backend/tests/unit/test_slice5b2_personality_schema_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/personality/schema.py backend/app/personality/loader.py`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5b2_personality_schema_units.py -q`; `backend/.venv/Scripts/python -c "from backend.app.personality.loader import load_personality_profile; p=load_personality_profile('default'); print('ack_phrase_style:', p.acknowledgment_phrase_style); print('wake_response_sound:', p.wake_response_sound)"`
+    ```text
+    PASS compile: schema.py | loader.py
+    PASS targeted 5B.2 personality units: 2 passed in 0.04s
+    PASS loader runtime check: ack_phrase_style: minimal | wake_response_sound: none
+    Corrective fix (bounded): moved new defaulted dataclass fields to the end of PersonalityProfile to resolve field-ordering error
+    ```
+
+- 2026-04-09 21:04
+  - Summary: Sub-Slice 5B.1 wake-runtime completion was finalized by preserving wake runtime surfaces under `backend/app/runtimes/wake/`, keeping wake env-key exposure in `backend/app/core/settings.py`, correcting Porcupine initialization so configured `.ppn` is supplied via `keyword_paths` (not `model_path`), and proving clean bounded concurrent wake+barge startup while leaving shell integration, readiness/profiler extensions, and wake acknowledgment/persona behavior unchanged.
+  - Scope: backend/app/core/settings.py, backend/app/runtimes/wake/base.py, backend/app/runtimes/wake/local_runtime.py, backend/app/runtimes/wake/wakeword_runtime.py, backend/tests/unit/test_slice5b1_wake_runtime_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5b1_wake_runtime_units.py -q`; `backend/.venv/Scripts/python -c "import threading, time; from backend.app.core import settings; from backend.app.runtimes.wake.local_runtime import PorcupineWakeWord; from backend.app.runtimes.stt.barge_in import BargeInDetector; wake = PorcupineWakeWord(access_key=settings.PICOVOICE_ACCESS_KEY, model_path=settings.PVPORCUPINE_MODEL_PATH); wf=threading.Event(); bf=threading.Event(); barge=BargeInDetector(bf); wake.start(wf); barge.start(); print('wake_started:', not wake.failed); print('wake_failure_reason:', wake.failure_reason); print('barge_started:', not barge.failed); print('barge_failure_reason:', barge.failure_reason); time.sleep(0.5); barge.stop(); wake.stop(); print('concurrent_streams_ok:', (not wake.failed) and (not barge.failed))"`
+    ```text
+    PASS targeted wake-runtime units: 4 passed in 0.07s
+    PASS concurrent wake+barge validation: wake_started: True | wake_failure_reason: None | barge_started: True | barge_failure_reason: None | concurrent_streams_ok: True
+    Constraint confirmation: scripts/run_jarvis.py unchanged; BackendReadiness/profiler unchanged; no wake acknowledgment/persona behavior added
+    Implementation correction: configured .ppn is passed via keyword_paths during pvporcupine.create(...), not model_path
+    ```
+
+- 2026-04-09 19:22
+  - Summary: Sub-Slice 5B.1 wake-runtime introduction was completed by adding host-agnostic wake runtime surfaces under `backend/app/runtimes/wake/`, exposing existing wake env keys in `backend/app/core/settings.py`, and adding targeted wake runtime unit coverage while keeping shell integration and readiness/profiler extensions out of scope; bounded concurrent wake+barge smoke validation produced degraded host evidence (`wake_started: False`, `barge_started: True`).
+  - Scope: backend/app/core/settings.py, backend/app/runtimes/wake/base.py, backend/app/runtimes/wake/local_runtime.py, backend/app/runtimes/wake/wakeword_runtime.py, backend/tests/unit/test_slice5b1_wake_runtime_units.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m compileall backend/app/runtimes/wake/base.py backend/app/runtimes/wake/local_runtime.py backend/app/runtimes/wake/wakeword_runtime.py`; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice5b1_wake_runtime_units.py -q`; `backend/.venv/Scripts/python -c "import os, threading, time; from backend.app.runtimes.wake.local_runtime import PorcupineWakeWord; from backend.app.runtimes.stt.barge_in import BargeInDetector; key = os.environ.get('PICOVOICE_ACCESS_KEY', ''); model_path = os.environ.get('PVPORCUPINE_MODEL_PATH', ''); wake = PorcupineWakeWord(access_key=key, model_path=model_path); wake_flag = threading.Event(); barge_flag = threading.Event(); barge = BargeInDetector(barge_flag); wake.start(wake_flag); barge.start(); print('wake_started:', not wake.failed); print('barge_started:', not barge.failed); time.sleep(0.5); barge.stop(); wake.stop(); print('concurrent_streams_ok:', (not wake.failed) and (not barge.failed)); print('wake_failure_reason_present:', wake.failure_reason is not None); print('barge_failure_reason_present:', barge.failure_reason is not None)"`
+    ```text
+    PASS compile: base.py | local_runtime.py | wakeword_runtime.py
+    PASS targeted wake-runtime units: 4 passed in 0.08s
+    DEGRADED concurrent streams: wake_started: False | barge_started: True | concurrent_streams_ok: False
+    FIX applied in local_runtime.py: guarded `pvporcupine.create(...)` None return before using sample_rate/frame_length
+    Constraint confirmation: scripts/run_jarvis.py unchanged; BackendReadiness/profiler unchanged; no wake acknowledgment/persona behavior added
+    ```
+
+- 2026-04-09 14:39
+  - Summary: Sub-Slice 5.p.2 unified voice-model bootstrap was completed by extending `scripts/bootstrap_readiness.py` to explicitly materialize/verify STT recommended, STT fallback (`whisper-small`), and TTS recommended models with per-model PASS/FAILED output while preserving existing STT selected-device preflight fail-closed behavior; `scripts/validate_backend.py` remained unchanged as runtime gate owner.
+  - Scope: scripts/bootstrap_readiness.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python scripts/bootstrap_readiness.py`; `backend/.venv/Scripts/python scripts/bootstrap_readiness.py --verify-only`
+    ```text
+    [PASS] STT model: whisper-large-v3-turbo present
+    [PASS] STT fallback: whisper-small present
+    [PASS] TTS model: kokoro-v1.0 present
+    [PASS] STT readiness proven for selected device: cuda
+    ```
+
+- 2026-04-09 14:10
+  - Summary: Sub-Slice 5.p.1 explicit fallback-model trust was completed by proving `ensure_models.py` parser behavior for omitted `--model`, executing explicit `whisper-small` fallback verification/ensure, and resolving a bounded STT verification mismatch where downloaded artifacts exposed `vocab.json` instead of `vocabulary.json`.
+  - Scope: backend/app/models/manager.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python scripts/ensure_models.py --verify-only --family stt`; `backend/.venv/Scripts/python scripts/ensure_models.py --verify-only --family stt --model whisper-small`; `backend/.venv/Scripts/python scripts/ensure_models.py --family stt --model whisper-small`; `backend/.venv/Scripts/python -c "from pathlib import Path; p=Path('models/stt/whisper-small'); print('exists', p.exists()); print(sorted([x.name for x in p.iterdir()]) if p.exists() else [])"`; `backend/.venv/Scripts/python scripts/ensure_models.py --verify-only --family stt --model whisper-small`
+    ```text
+    [FAILED] catalog resolution: --model is required unless --all is set
+    [MISSING] whisper-small → models/stt/whisper-small
+    [FAILED] whisper-small: verify failed after download for repo 'Systran/faster-whisper-small' at 'models/stt/whisper-small'
+    exists True
+    ['...','config.json','model.bin','vocab.json',...]
+    [PRESENT] whisper-small → models/stt/whisper-small
+    ```
+
 - 2026-04-07 21:45
   - Summary: Slice 5A regression confirmation was completed by re-running the live interruption gate and confirming a passing result on the latest evidence while noting known operator-timed intermittency risk.
   - Scope: backend/tests/runtime/test_slice4_interruption_live.py, CHANGE_LOG.md

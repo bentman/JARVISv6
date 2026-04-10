@@ -252,6 +252,34 @@ def test_voice_service_speaking_state_transition(monkeypatch: pytest.MonkeyPatch
     assert "SPEAKING" in FakeEngine.last.transitions
 
 
+def test_voice_service_acknowledgment_hook_invoked_before_run_turn(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeSTT:
+        def transcribe(self, audio_path: str) -> str:
+            return "test transcript"
+
+    events: list[str] = []
+
+    def _ack(*_args, **_kwargs) -> None:
+        events.append("ack")
+
+    def _run_turn(*_args, **_kwargs) -> str:
+        events.append("run_turn")
+        return "unit response"
+
+    monkeypatch.setattr(voice_service, "capture_utterance", lambda output_path, duration_seconds: output_path)
+    monkeypatch.setattr(voice_service, "select_stt_runtime", lambda report: FakeSTT())
+    monkeypatch.setattr(voice_service, "play_acknowledgment_if_configured", _ack)
+    monkeypatch.setattr(voice_service, "run_turn", _run_turn)
+    monkeypatch.setattr(voice_service, "select_tts_runtime", lambda report: None)
+
+    result = voice_service.run_voice_turn(_report(), _personality())
+
+    assert isinstance(result, voice_service.VoiceTurnResult)
+    assert events[:2] == ["ack", "run_turn"]
+
+
 def test_verify_model_tts_family(tmp_path: Path) -> None:
     tts_dir = tmp_path / "tts-model"
     tts_dir.mkdir(parents=True, exist_ok=True)

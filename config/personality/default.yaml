@@ -12,5 +12,7 @@ acknowledgment_style: minimal
 interruption_style: stop-and-listen
 voice_pacing: moderate
 voice_energy: calm
+# acknowledgment_phrase_style: minimal  # minimal | standard | warm
+# wake_response_sound: none             # none | tone | phrase
 safety_overrides: []
 enabled: true

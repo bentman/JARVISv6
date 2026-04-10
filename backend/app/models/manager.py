@@ -14,13 +14,15 @@ def verify_model(local_dir: str, family: str = "stt") -> bool:
     if not path.exists() or not path.is_dir():
         return False
     if family == "stt":
-        # CTranslate2 / faster-whisper artifact set — tokenizer.json is a transformers
-        # artifact and is NOT present in Systran/faster-whisper-* repos. Do not include it.
+        # CTranslate2 / faster-whisper artifact set. tokenizer.json is a transformers
+        # artifact and is NOT required here.
+        # Some repos expose vocab as vocabulary.json, others as vocab.json.
         required_files = (
             "model.bin",
             "config.json",
-            "vocabulary.json",
         )
+        has_vocab_file = (path / "vocabulary.json").exists() or (path / "vocab.json").exists()
+        return all((path / name).exists() for name in required_files) and has_vocab_file
     elif family == "tts":
         required_files = ("kokoro-v1_0.pth",)
     else:

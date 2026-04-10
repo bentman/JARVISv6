@@ -23,6 +23,7 @@ def test_startup_only_turns_zero_exits_cleanly(monkeypatch) -> None:
 
     monkeypatch.setattr(run_jarvis, "run_startup", lambda personality_name="default": (summary, report, personality))
     monkeypatch.setattr(run_jarvis, "print_startup_summary", lambda _summary: None)
+    monkeypatch.setattr(run_jarvis, "select_wake_runtime", lambda: None)
     monkeypatch.setattr(run_jarvis.SessionManager, "open_session", staticmethod(lambda: session))
     monkeypatch.setattr(run_jarvis.SessionManager, "close_session", staticmethod(lambda s: closed.append(s)))
 
@@ -44,6 +45,7 @@ def test_shell_voice_gated_when_stt_not_ready(monkeypatch) -> None:
 
     monkeypatch.setattr(run_jarvis, "run_startup", lambda personality_name="default": (summary, report, personality))
     monkeypatch.setattr(run_jarvis, "print_startup_summary", lambda _summary: None)
+    monkeypatch.setattr(run_jarvis, "select_wake_runtime", lambda: None)
     monkeypatch.setattr(run_jarvis.SessionManager, "open_session", staticmethod(lambda: session))
     monkeypatch.setattr(run_jarvis.SessionManager, "close_session", staticmethod(lambda _s: None))
     monkeypatch.setattr(
@@ -86,6 +88,7 @@ def test_text_dispatch_and_turn_cap(monkeypatch) -> None:
 
     monkeypatch.setattr(run_jarvis, "run_startup", lambda personality_name="default": (summary, report, personality))
     monkeypatch.setattr(run_jarvis, "print_startup_summary", lambda _summary: None)
+    monkeypatch.setattr(run_jarvis, "select_wake_runtime", lambda: None)
     monkeypatch.setattr(run_jarvis.SessionManager, "open_session", staticmethod(lambda: session))
     monkeypatch.setattr(run_jarvis.SessionManager, "close_session", staticmethod(lambda s: closed.append(s)))
     monkeypatch.setattr(run_jarvis, "run_text_turn", _fake_text_turn)
@@ -129,6 +132,7 @@ def test_shared_session_memory_forwarding_across_text_and_voice(monkeypatch) -> 
 
     monkeypatch.setattr(run_jarvis, "run_startup", lambda personality_name="default": (summary, report, personality))
     monkeypatch.setattr(run_jarvis, "print_startup_summary", lambda _summary: None)
+    monkeypatch.setattr(run_jarvis, "select_wake_runtime", lambda: None)
     monkeypatch.setattr(run_jarvis.SessionManager, "open_session", staticmethod(lambda: session))
     monkeypatch.setattr(run_jarvis.SessionManager, "close_session", staticmethod(lambda _s: None))
     monkeypatch.setattr(run_jarvis, "run_text_turn", _fake_text_turn)
@@ -145,3 +149,149 @@ def test_shared_session_memory_forwarding_across_text_and_voice(monkeypatch) -> 
     assert seen["text_session"] is session
     assert seen["voice_session"] is session
     assert seen["text_memory"] is seen["voice_memory"]
+
+
+def test_wake_unavailable_prints_startup_message_and_text_flow_still_works(monkeypatch) -> None:
+    summary = _summary(stt_ready=True, tts_ready=True, llm_ready=True)
+    report = object()
+    personality = object()
+    session = object()
+
+    prints: list[str] = []
+    text_calls: list[str] = []
+
+    monkeypatch.setattr(run_jarvis, "run_startup", lambda personality_name="default": (summary, report, personality))
+    monkeypatch.setattr(run_jarvis, "print_startup_summary", lambda _summary: None)
+    monkeypatch.setattr(run_jarvis, "select_wake_runtime", lambda: None)
+    monkeypatch.setattr(run_jarvis.SessionManager, "open_session", staticmethod(lambda: session))
+    monkeypatch.setattr(run_jarvis.SessionManager, "close_session", staticmethod(lambda _s: None))
+    monkeypatch.setattr(
+        run_jarvis,
+        "run_text_turn",
+        lambda text, *_args, **_kwargs: (text_calls.append(text) or SimpleNamespace(response="ok", failed=False, failure_reason=None)),
+    )
+
+    inputs = iter(["hello", "quit"])
+    rc = run_jarvis.main(
+        [],
+        input_fn=lambda _prompt: next(inputs),
+        print_fn=lambda *args: prints.append(" ".join(str(a) for a in args)),
+    )
+
+    assert rc == 0
+    assert any("⚠ WAKE WORD: unavailable (push-to-talk mode)" in line for line in prints)
+    assert text_calls == ["hello"]
+
+
+def test_wake_flag_triggers_voice_turn_without_manual_voice_command(monkeypatch) -> None:
+    summary = _summary(stt_ready=True, tts_ready=True, llm_ready=True)
+    report = object()
+    personality = object()
+    session = object()
+
+    voice_calls: list[tuple[object, object]] = []
+
+    class _WakeRuntime:
+        failed = False
+        failure_reason = None
+
+        def start(self, wake_flag) -> None:
+            wake_flag.set()
+
+        def stop(self) -> None:
+            pass
+
+    monkeypatch.setattr(run_jarvis, "run_startup", lambda personality_name="default": (summary, report, personality))
+    monkeypatch.setattr(run_jarvis, "print_startup_summary", lambda _summary: None)
+    monkeypatch.setattr(run_jarvis, "select_wake_runtime", lambda: _WakeRuntime())
+    monkeypatch.setattr(run_jarvis.SessionManager, "open_session", staticmethod(lambda: session))
+    monkeypatch.setattr(run_jarvis.SessionManager, "close_session", staticmethod(lambda _s: None))
+    monkeypatch.setattr(
+        run_jarvis,
+        "run_voice_turn",
+        lambda report_arg, personality_arg, **_kwargs: (
+            voice_calls.append((report_arg, personality_arg))
+            or SimpleNamespace(interrupted=False, response="voice")
+        ),
+    )
+
+    rc = run_jarvis.main(["--turns", "1"], input_fn=lambda _prompt: next(iter(())), print_fn=lambda *args: None)
+
+    assert rc == 0
+    assert len(voice_calls) == 1
+
+
+def test_wake_trigger_counts_toward_turn_limit(monkeypatch) -> None:
+    summary = _summary(stt_ready=True, tts_ready=True, llm_ready=True)
+    report = object()
+    personality = object()
+    session = object()
+
+    voice_calls: list[str] = []
+    text_calls: list[str] = []
+
+    class _WakeRuntime:
+        failed = False
+        failure_reason = None
+
+        def start(self, wake_flag) -> None:
+            wake_flag.set()
+
+        def stop(self) -> None:
+            pass
+
+    monkeypatch.setattr(run_jarvis, "run_startup", lambda personality_name="default": (summary, report, personality))
+    monkeypatch.setattr(run_jarvis, "print_startup_summary", lambda _summary: None)
+    monkeypatch.setattr(run_jarvis, "select_wake_runtime", lambda: _WakeRuntime())
+    monkeypatch.setattr(run_jarvis.SessionManager, "open_session", staticmethod(lambda: session))
+    monkeypatch.setattr(run_jarvis.SessionManager, "close_session", staticmethod(lambda _s: None))
+    monkeypatch.setattr(
+        run_jarvis,
+        "run_voice_turn",
+        lambda *_args, **_kwargs: (voice_calls.append("voice") or SimpleNamespace(interrupted=False, response="voice")),
+    )
+    monkeypatch.setattr(
+        run_jarvis,
+        "run_text_turn",
+        lambda text, *_args, **_kwargs: (text_calls.append(text) or SimpleNamespace(response="ok", failed=False, failure_reason=None)),
+    )
+
+    inputs = iter(["hello"])
+    rc = run_jarvis.main(["--turns", "2"], input_fn=lambda _prompt: next(inputs), print_fn=lambda *args: None)
+
+    assert rc == 0
+    assert voice_calls == ["voice"]
+    assert text_calls == ["hello"]
+
+
+def test_wake_runtime_stop_called_on_exit(monkeypatch) -> None:
+    summary = _summary(stt_ready=True, tts_ready=True, llm_ready=True)
+    report = object()
+    personality = object()
+    session = object()
+
+    class _WakeRuntime:
+        failed = False
+        failure_reason = None
+
+        def __init__(self) -> None:
+            self.stopped = False
+
+        def start(self, wake_flag) -> None:
+            return None
+
+        def stop(self) -> None:
+            self.stopped = True
+
+    wake_runtime = _WakeRuntime()
+
+    monkeypatch.setattr(run_jarvis, "run_startup", lambda personality_name="default": (summary, report, personality))
+    monkeypatch.setattr(run_jarvis, "print_startup_summary", lambda _summary: None)
+    monkeypatch.setattr(run_jarvis, "select_wake_runtime", lambda: wake_runtime)
+    monkeypatch.setattr(run_jarvis.SessionManager, "open_session", staticmethod(lambda: session))
+    monkeypatch.setattr(run_jarvis.SessionManager, "close_session", staticmethod(lambda _s: None))
+
+    rc = run_jarvis.main(["--turns", "0"])
+
+    assert rc == 0
+    assert wake_runtime.stopped is True

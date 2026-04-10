@@ -13,12 +13,12 @@ from backend.app.hardware.preflight import derive_stt_device_readiness, run_hard
 from backend.app.hardware.profiler import run_profiler
 
 
-def _run_model_surface(model_name: str, verify_only: bool) -> int:
+def _run_model_surface(*, family: str, model_name: str, verify_only: bool) -> int:
     command = [
         sys.executable,
         "scripts/ensure_models.py",
         "--family",
-        "stt",
+        family,
         "--model",
         model_name,
     ]
@@ -30,17 +30,48 @@ def _run_model_surface(model_name: str, verify_only: bool) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Bootstrap STT readiness before runtime use")
+    parser = argparse.ArgumentParser(description="Bootstrap voice-model readiness before runtime use")
     parser.add_argument("--model", default="whisper-large-v3-turbo")
+    parser.add_argument("--stt-fallback-model", default="whisper-small")
     parser.add_argument("--verify-only", action="store_true")
     args = parser.parse_args(argv)
 
-    model_rc = _run_model_surface(model_name=args.model, verify_only=args.verify_only)
-    if model_rc != 0:
-        print(f"[FAILED] stt model ensure/verify failed for {args.model}")
-        return 1
-
     report = run_profiler()
+
+    stt_recommended_model = str(report.flags.stt_recommended_model or args.model)
+    stt_fallback_model = str(args.stt_fallback_model)
+    tts_recommended_model = str(report.flags.tts_recommended_model)
+
+    stt_model_rc = _run_model_surface(
+        family="stt",
+        model_name=stt_recommended_model,
+        verify_only=args.verify_only,
+    )
+    if stt_model_rc != 0:
+        print(f"[FAILED] STT model ensure/verify failed: {stt_recommended_model}")
+        return 1
+    print(f"[PASS] STT model: {stt_recommended_model} present")
+
+    stt_fallback_rc = _run_model_surface(
+        family="stt",
+        model_name=stt_fallback_model,
+        verify_only=args.verify_only,
+    )
+    if stt_fallback_rc != 0:
+        print(f"[FAILED] STT fallback ensure/verify failed: {stt_fallback_model}")
+        return 1
+    print(f"[PASS] STT fallback: {stt_fallback_model} present")
+
+    tts_model_rc = _run_model_surface(
+        family="tts",
+        model_name=tts_recommended_model,
+        verify_only=args.verify_only,
+    )
+    if tts_model_rc != 0:
+        print(f"[FAILED] TTS model ensure/verify failed: {tts_recommended_model}")
+        return 1
+    print(f"[PASS] TTS model: {tts_recommended_model} present")
+
     preflight = run_hardware_preflight(report.profile)
     stt_readiness = derive_stt_device_readiness(preflight)
 

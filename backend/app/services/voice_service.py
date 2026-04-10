@@ -12,6 +12,7 @@ from backend.app.conversation.session_manager import Session
 from backend.app.conversation.states import ConversationState
 from backend.app.core.capabilities import FullCapabilityReport
 from backend.app.memory.working import WorkingMemory
+from backend.app.personality.acknowledgment import play_acknowledgment_if_configured
 from backend.app.personality.schema import PersonalityProfile
 from backend.app.runtimes.stt.barge_in import BargeInDetector
 from backend.app.runtimes.stt.stt_runtime import capture_utterance, select_stt_runtime
@@ -70,6 +71,9 @@ def run_voice_turn(
         transcript = stt.transcribe(audio_path)
         print(f"[TRANSCRIPT] {transcript}")
 
+        tts = select_tts_runtime(report)
+        play_acknowledgment_if_configured(personality, tts, temp_dir)
+
         response = run_turn(
             report,
             personality,
@@ -81,7 +85,6 @@ def run_voice_turn(
         print(f"[RESPONSE] {response}")
 
         engine.transition(ConversationState.SPEAKING)
-        tts = select_tts_runtime(report)
         if tts is None:
             print("[DEGRADED] TTS unavailable — text response only")
             engine.transition(ConversationState.IDLE)

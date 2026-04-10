@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import sys
+import threading
+from queue import Empty, SimpleQueue
 from pathlib import Path
 from typing import Callable
 
@@ -14,6 +16,16 @@ from backend.app.memory.working import WorkingMemory
 from backend.app.services.startup_service import print_startup_summary, run_startup
 from backend.app.services.task_service import run_text_turn
 from backend.app.services.voice_service import run_voice_turn
+from backend.app.runtimes.wake.wakeword_runtime import select_wake_runtime
+
+
+def _stdin_reader(input_fn: Callable[[str], str], cmd_queue: SimpleQueue[str]) -> None:
+    while True:
+        try:
+            cmd_queue.put(input_fn("> "))
+        except (EOFError, StopIteration):
+            cmd_queue.put("__EOF__")
+            return
 
 
 def main(
@@ -43,6 +55,42 @@ def main(
 
     turns_completed = 0
     turn_limit = args.turns
+    wake_flag = threading.Event()
+    wake_runtime = select_wake_runtime()
+
+    if wake_runtime is None:
+        print_fn("⚠ WAKE WORD: unavailable (push-to-talk mode)")
+    else:
+        wake_runtime.start(wake_flag)
+        if wake_runtime.failed:
+            print_fn("⚠ WAKE WORD: unavailable (push-to-talk mode)")
+            wake_runtime = None
+        else:
+            print_fn("[WAKE] ready")
+
+    cmd_queue: SimpleQueue[str] = SimpleQueue()
+    stdin_thread = threading.Thread(target=_stdin_reader, args=(input_fn, cmd_queue), daemon=True)
+    stdin_thread.start()
+
+    def _run_voice_turn_once() -> bool:
+        nonlocal turns_completed
+        if not summary.stt_ready:
+            print_fn("[DEGRADED] Voice unavailable (STT not ready) — enter text instead")
+            return False
+
+        voice_result = run_voice_turn(
+            report,
+            personality,
+            session=session,
+            memory=memory,
+        )
+        if voice_result.interrupted:
+            print_fn("[INTERRUPTED]")
+        elif voice_result.response:
+            print_fn(f"[RESPONSE] {voice_result.response}")
+
+        turns_completed += 1
+        return True
 
     try:
         if turn_limit == 0:
@@ -50,12 +98,25 @@ def main(
 
         while True:
             if turn_limit is not None and turns_completed >= turn_limit:
+                print_fn("[EXIT] turn limit reached")
                 return 0
 
+            if wake_runtime is not None and wake_flag.is_set():
+                print_fn("[WAKE] trigger consumed")
+                wake_flag.clear()
+                print_fn("[WAKE] dispatch voice turn")
+                _run_voice_turn_once()
+                continue
+
             try:
-                user_input = input_fn("> ").strip()
-            except EOFError:
+                user_input = cmd_queue.get(timeout=0.1)
+            except Empty:
+                continue
+
+            if user_input == "__EOF__":
                 return 0
+
+            user_input = user_input.strip()
 
             if not user_input:
                 continue
@@ -65,22 +126,7 @@ def main(
                 return 0
 
             if normalized in {"v", "voice"}:
-                if not summary.stt_ready:
-                    print_fn("[DEGRADED] Voice unavailable (STT not ready) — enter text instead")
-                    continue
-
-                voice_result = run_voice_turn(
-                    report,
-                    personality,
-                    session=session,
-                    memory=memory,
-                )
-                if voice_result.interrupted:
-                    print_fn("[INTERRUPTED]")
-                elif voice_result.response:
-                    print_fn(f"[RESPONSE] {voice_result.response}")
-
-                turns_completed += 1
+                _run_voice_turn_once()
                 continue
 
             text_result = run_text_turn(
@@ -97,6 +143,8 @@ def main(
 
             turns_completed += 1
     finally:
+        if wake_runtime is not None:
+            wake_runtime.stop()
         SessionManager.close_session(session)
 
 
