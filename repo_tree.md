@@ -101,7 +101,11 @@ backend/
 │  │  ├─ semantic.py                 # semantic memory implementation
 │  │  ├─ write_policy.py             # memory write policies
 │  │  └─ working.py                  # working memory implementation
+│  ├─ models/
+│  │  ├─ catalog.py                  # model catalog authority
+│  │  └─ manager.py                  # model verify/ensure authority
 │  ├─ personality/
+│  │  ├─ acknowledgment.py           # personality-aware acknowledgment phrase generation / playback guard surface
 │  │  ├─ adapter.py                  # applies personality to cognition/response layers
 │  │  ├─ loader.py                   # loads personality profiles
 │  │  ├─ resolver.py                 # resolves active personality for runtime/session
@@ -111,6 +115,11 @@ backend/
 │  │  ├─ model_registry.py           # model/provider catalog access
 │  │  └─ runtime_selector.py         # chooses concrete runtime/provider
 │  ├─ runtimes/
+│  │  ├─ internetsearch/
+│  │  │  ├─ base.py                  # common internert search runtime interface
+│  │  │  ├─ ddgs_runtime.py          # secondary DuckDuckGo search escalation runtime
+│  │  │  ├─ searxng_runtime.py       # primary local SearXNG search runtime
+│  │  │  └─ tavily_runtime.py        # tertiary Tavily search escalation runtime
 │  │  ├─ llm/
 │  │  │  ├─ base.py                  # common LLM runtime interface
 │  │  │  ├─ claude_runtime.py        # anthropic escalation runtime
@@ -119,19 +128,15 @@ backend/
 │  │  │  ├─ openai_runtime.py        # openai escalation runtime
 │  │  │  ├─ xai_runtime.py           # xAI escalation runtime
 │  │  │  └─ zai_runtime.py           # Z.AI escalation runtime
-│  │  ├─ search/
-│  │  │  ├─ base.py                  # common search runtime interface
-│  │  │  ├─ ddgs_runtime.py          # DuckDuckGo search escalation runtime
-│  │  │  ├─ local_runtime.py         # bundled/local search runtime if present
-│  │  │  ├─ searxng_runtime.py       # SearXNG search escalation runtime
-│  │  │  └─ tavily_runtime.py        # Tavily search escalation runtime
 │  │  ├─ stt/
 │  │  │  ├─ base.py                  # common STT runtime interface
+│  │  │  ├─ barge_in.py              # barge-in detector used by interruption / wake-concurrency surfaces
 │  │  │  ├─ local_runtime.py         # local/default STT runtime
 │  │  │  └─ stt_runtime.py           # generic STT runtime adapter slot
 │  │  ├─ tts/
 │  │  │  ├─ base.py                  # common TTS runtime interface
 │  │  │  ├─ local_runtime.py         # local/default TTS runtime
+│  │  │  ├─ playback.py              # blocking / interruptible playback utilities
 │  │  │  └─ tts_runtime.py           # generic TTS runtime adapter slot
 │  │  └─ wake/
 │  │     ├─ base.py                  # common wake runtime interface
@@ -140,6 +145,7 @@ backend/
 │  ├─ services/
 │  │  ├─ diagnostics_service.py      # diagnostics-facing service layer
 │  │  ├─ session_service.py          # session service layer
+│  │  ├─ startup_service.py          # startup/readiness summary service boundary used by proving host
 │  │  ├─ task_service.py             # host-facing task/text service slot (delegates to canonical turn execution)
 │  │  ├─ turn_service.py             # canonical transcript-bound turn executor shared by voice/text paths
 │  │  └─ voice_service.py            # voice-facing service layer
