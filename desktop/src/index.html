@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JARVIS</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="layout">
+
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-icon">◈</span>
+          <span class="brand-name">JARVIS</span>
+        </div>
+
+        <div class="assistant-status-block">
+          <span class="status-dot" id="status-dot"></span>
+          <span class="status-label" id="status-label">Stopped</span>
+        </div>
+
+        <div class="readiness-block" id="readiness-block">
+          <div class="readiness-row">
+            <span class="readiness-key">STT</span>
+            <span class="readiness-val" id="r-stt">—</span>
+          </div>
+          <div class="readiness-row">
+            <span class="readiness-key">TTS</span>
+            <span class="readiness-val" id="r-tts">—</span>
+          </div>
+          <div class="readiness-row">
+            <span class="readiness-key">LLM</span>
+            <span class="readiness-val" id="r-llm">—</span>
+          </div>
+          <div class="readiness-row">
+            <span class="readiness-key">Profile</span>
+            <span class="readiness-val" id="r-profile">—</span>
+          </div>
+        </div>
+
+        <div class="degraded-block" id="degraded-block" style="display:none">
+          <div class="degraded-title">⚠ Degraded</div>
+          <ul class="degraded-list" id="degraded-list"></ul>
+        </div>
+
+        <div class="sidebar-controls">
+          <button id="start-btn" class="btn-start">Start JARVIS</button>
+          <button id="stop-btn" class="btn-stop" disabled>Stop JARVIS</button>
+        </div>
+      </aside>
+
+      <!-- Main conversation area -->
+      <main class="conversation-area">
+        <div class="conversation-header">
+          <span class="conversation-title">Conversation</span>
+          <span class="turn-count" id="turn-count"></span>
+        </div>
+
+        <div class="conversation-feed" id="conversation-feed">
+          <div class="empty-state" id="empty-state">
+            <span class="empty-icon">◈</span>
+            <p>Start JARVIS to begin a conversation.</p>
+            <p class="empty-sub">Voice and text turns will appear here.</p>
+          </div>
+        </div>
+
+        <div class="input-bar" id="input-bar" style="display:none">
+          <input id="text-input" class="text-input" type="text"
+                 placeholder="Type a message or use voice…" autocomplete="off" />
+          <button id="send-btn" class="btn-send">Send</button>
+          <button id="ptt-btn" class="btn-ptt" title="Push to talk">🎤</button>
+        </div>
+
+        <div class="status-bar" id="status-bar">
+          <span id="status-bar-text">Ready</span>
+        </div>
+      </main>
+
+    </div>
+
+    <script src="./main.js"></script>
+  </body>
+</html>
