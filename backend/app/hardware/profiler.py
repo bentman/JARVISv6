@@ -92,6 +92,7 @@ def get_stt_device_readiness(profile: HardwareProfile) -> dict[str, object]:
         profile,
         backend_scope="stt",
         evidence_tokens=evidence_tokens,
+        skip_venv_check=True,
     )
     derived = derive_stt_device_readiness(preflight_result)
 
@@ -116,6 +117,7 @@ def get_tts_device_readiness(profile: HardwareProfile) -> dict[str, object]:
         profile,
         backend_scope="tts",
         evidence_tokens=evidence_tokens,
+        skip_venv_check=True,
     )
     derived = derive_tts_device_readiness(preflight_result)
 

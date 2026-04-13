@@ -225,8 +225,10 @@ def run_hardware_preflight(
     *,
     backend_scope: str = "stt",
     evidence_tokens: list[str] | None = None,
+    skip_venv_check: bool = False,
 ) -> dict[str, object]:
-    _ensure_backend_venv_interpreter()
+    if not skip_venv_check:
+        _ensure_backend_venv_interpreter()
 
     resolution = resolve_hardware_profiles(profile)
     raw_manifest_ids = list(resolution.get("matched_manifest_ids") or [])
