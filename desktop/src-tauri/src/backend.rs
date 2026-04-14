@@ -64,6 +64,8 @@ impl BackendProcessManager {
             .arg("127.0.0.1")
             .arg("--port")
             .arg(port.to_string())
+            .env("PYTHONUTF8", "1")
+            .env("PYTHONIOENCODING", "utf-8")
             .current_dir(&repo_root)
             .stdout(std::process::Stdio::from(stdout_file))
             .stderr(std::process::Stdio::from(stderr_file));

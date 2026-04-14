@@ -15,6 +15,53 @@
 
 ## Entries
 
+- 2026-04-14 08:54
+  - Summary: Sub-Slice 6.4 was completed by adding wake-runtime lifecycle/state projection, exposing backend-owned wake/turn state through `/session/state`, and shifting desktop conversation rendering to backend truth with minimal interaction-surface/layout polish for wake/status/history display.
+  - Scope: backend/app/services/session_service.py, backend/app/api/routes/session.py, desktop/src/main.js, desktop/src/index.html, desktop/src/style.css, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m py_compile backend/app/services/session_service.py backend/app/api/routes/session.py` → PASS; `node --check desktop/src/main.js` → PASS; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice6_resident_session_units.py backend/tests/unit/test_slice6_api_routes_units.py -q` → PASS (`11 passed`); `cargo tauri build --debug` → PASS; manual runtime validation confirmed improved backend-truth conversation rendering and wake indicator behavior on the desktop interaction surface.
+
+- 2026-04-14 07:47
+  - Summary: Sub-Slice 6.3 resident-session desktop interaction completion was verified by closing on-screen PTT/status surface coherence for the live desktop path (PTT-driven in 6.3), with corrected live PTT/STT transcript behavior, coherent response rendering, and Ready-state return after completed turns.
+  - Scope: desktop runtime interaction surface (status/PTT/transcript/response path), backend resident-session 6.3 path validation, and targeted Slice 6 readiness/API/resident unit-test alignment.
+  - Evidence: `cargo tauri build --debug` → PASS; live desktop validation (Start JARVIS → backend/session up; on-screen PTT produced correct transcript; response produced/shown; state returned to `Ready (PTT/Hotkey)`; text send path still worked) → PASS; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py::test_bootstrap_readiness_verify_only_uses_existing_surfaces backend/tests/unit/test_hardware_readiness.py::test_bootstrap_readiness_fails_closed_when_not_ready backend/tests/unit/test_slice6_api_routes_units.py::test_health_route_returns_required_readiness_fields backend/tests/unit/test_slice6_api_routes_units.py::test_session_routes_start_state_text_stop backend/tests/unit/test_slice6_resident_session_units.py::test_session_service_start_sets_listening_and_session backend/tests/unit/test_slice6_resident_session_units.py::test_session_service_stop_sets_stopped_and_closes_session backend/tests/unit/test_slice6_resident_session_units.py::test_run_voice_once_interrupted_returns_to_listening backend/tests/unit/test_slice6_resident_session_units.py::test_run_loop_degrades_on_voice_exception -q` → PASS (`8 passed`); `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice6_resident_session_units.py backend/tests/unit/test_slice6_api_routes_units.py backend/tests/unit/test_hardware_readiness.py -q` → PASS (`40 passed`); `backend/.venv/Scripts/python .\\scripts\\validate_backend.py --scope unit` → PASS (`159 passed`, `UNIT=PASS`).
+
+- 2026-04-13 14:19
+  - Summary: Corrective post-restore alignment was completed by reconstructing `scripts/run_backend.py` as the backend API launch pivot for the proven 6.1/6.2 desktop contract and by correcting backend startup logging to the in-repo `reports/backend_startup.log` path expected by the desktop log reader.
+  - Scope: scripts/run_backend.py, backend/app/api/main.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m py_compile scripts/run_backend.py` → PASS; `backend/.venv/Scripts/python scripts/run_backend.py --host 127.0.0.1 --port 8765` → PASS; `Invoke-WebRequest http://127.0.0.1:8765/health` → PASS (`{"status":"ok",...}`); `backend/.venv/Scripts/python -m py_compile backend/app/api/main.py scripts/run_backend.py` → PASS; in-repo `e:/WORK/CODE/GitHub/bentman/Repositories/JARVISv6/reports/backend_startup.log` updated on current run → PASS; outside-repo `e:/WORK/CODE/GitHub/bentman/Repositories/reports/backend_startup.log` unchanged on current run → PASS; desktop startup log reader path remains `repo_root/reports/backend_startup.log` (`desktop/src-tauri/src/backend.rs`) → PASS.
+    ```text
+    PASS launch pivot restored: scripts/run_backend.py compiled and launched backend on 127.0.0.1:8765
+    PASS health proof: HTTP 200 with status "ok"
+    PASS boundary correction: startup log written to <repo>/reports/backend_startup.log
+    PASS boundary guard: outside-repo startup log path unchanged for current run
+    PASS desktop alignment: backend.rs reader path remains repo_root/reports/backend_startup.log
+    ```
+
+- 2026-04-13 07:58
+  - Summary: Sub-Slice 6.2 desktop application scaffolding and lifecycle proof was closed by fixing tray icon/resource binding and unifying tray/window backend lifecycle calls through shared desktop lifecycle helpers, then validating tray-driven Start/Stop health transitions on the local runtime path.
+  - Scope: desktop/src-tauri/src/tray.rs, desktop/src-tauri/src/lib.rs, CHANGE_LOG.md
+  - Evidence: `cargo tauri build --debug` → PASS; tray icon visible → PASS; tray Start launched backend → PASS; `Invoke-WebRequest http://127.0.0.1:8765/health` after tray Start → PASS (`{"status":"ok","profile_id":"nvidia-cuda-desktop-63gb","stt_ready":true,"tts_ready":true,"llm_ready":true}`); tray Stop terminated backend → PASS; `Invoke-WebRequest http://127.0.0.1:8765/health` after tray Stop → PASS (connection actively refused).
+    ```text
+    PASS build: cargo tauri build --debug
+    PASS tray icon: visible (non-blank)
+    PASS tray Start: backend process launched
+    PASS /health after tray Start: {"status":"ok",...}
+    PASS tray Stop: backend terminated
+    PASS /health after tray Stop: actively refused (unreachable)
+    ```
+
+- 2026-04-12 07:20
+  - Summary: Sub-Slice 6.1 backend resident session service + backend API foundation was completed and verified, including targeted 6.1 unit coverage and a minimal readiness-contract repair in `scripts/bootstrap_readiness.py` that restored unit-harness compatibility with existing bootstrap readiness tests.
+  - Scope: backend/app/services/session_service.py, backend/app/api/dependencies.py, backend/app/api/main.py, backend/app/api/routes/health.py, backend/app/api/routes/session.py, scripts/run_backend.py, backend/tests/unit/test_slice6_resident_session_units.py, backend/tests/unit/test_slice6_api_routes_units.py, scripts/bootstrap_readiness.py, backend/requirements.txt, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice6_resident_session_units.py -q` → PASS; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice6_api_routes_units.py -q` → PASS; `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py::test_bootstrap_readiness_verify_only_uses_existing_surfaces backend/tests/unit/test_hardware_readiness.py::test_bootstrap_readiness_fails_closed_when_not_ready -q` → PASS; `backend/.venv/Scripts/python scripts/validate_backend.py --scope unit` → PASS (`159 passed`); narrow backend runtime proof for `/health`, `/session/start`, `/session/state`, `/session/text`, `/session/stop` → PASS; report artifact: `reports/backend_validation_report_20260412_071611.txt`.
+    ```text
+    PASS 6.1 unit coverage: test_slice6_resident_session_units.py (7 passed) | test_slice6_api_routes_units.py (4 passed)
+    PASS readiness recovery tests: bootstrap_readiness verify-only compatibility and fail-closed path (2 passed)
+    PASS backend unit harness after readiness-contract fix: UNIT=PASS | 159 passed
+    PASS narrow backend runtime API proof: /health | /session/start | /session/state | /session/text | /session/stop
+    Status: Sub-Slice 6.1 closed and ready for Architect review
+    ```
+
 - 2026-04-09 22:50
   - Summary: Sub-Slice 5B.5 bounded closeout gate was completed by adding `backend/tests/unit/test_slice5b_presence_units.py` for cross-slice presence/contract stability checks and validating the approved deterministic 5B unit closeout set; this gate confirmed Slice 5B is ready for inventory closeout without reopening profiler/readiness scope.
   - Scope: backend/tests/unit/test_slice5b_presence_units.py, backend/tests/unit/test_slice5b1_wake_runtime_units.py, backend/tests/unit/test_slice5b2_personality_schema_units.py, backend/tests/unit/test_slice5b3_acknowledgment_units.py, backend/tests/unit/test_slice5a_shell_units.py, CHANGE_LOG.md

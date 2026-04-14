@@ -12,7 +12,7 @@ from backend.app.api.dependencies import get_startup_context, set_startup_error
 from backend.app.api.routes.health import router as health_router
 from backend.app.api.routes.session import router as session_router
 
-_LOG = Path(__file__).resolve().parents[4] / "reports" / "backend_startup.log"
+_LOG = Path(__file__).resolve().parents[3] / "reports" / "backend_startup.log"
 
 
 def _log(msg: str) -> None:

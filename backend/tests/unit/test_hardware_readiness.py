@@ -600,14 +600,32 @@ def test_tts_device_readiness_degrades_to_cpu_when_cuda_not_verified() -> None:
 def test_bootstrap_readiness_verify_only_uses_existing_surfaces(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[str, object]] = []
     profile = _build_profile(profile_id="bootstrap-readiness")
+    report = type(
+        "_Report",
+        (),
+        {
+            "profile": profile,
+            "flags": type(
+                "_Flags",
+                (),
+                {
+                    "stt_recommended_model": "whisper-large-v3-turbo",
+                    "tts_recommended_model": "kokoro-v1.0",
+                },
+            )(),
+        },
+    )()
 
     monkeypatch.setattr(
         "scripts.bootstrap_readiness._run_model_surface",
-        lambda model_name, verify_only: calls.append(("model", (model_name, verify_only))) or 0,
+        lambda *, family, model_name, verify_only: calls.append(
+            ("model", (family, model_name, verify_only))
+        )
+        or 0,
     )
     monkeypatch.setattr(
         "scripts.bootstrap_readiness.run_profiler",
-        lambda: type("_Report", (), {"profile": profile})(),
+        lambda: report,
     )
     monkeypatch.setattr(
         "scripts.bootstrap_readiness.run_hardware_preflight",
@@ -628,17 +646,37 @@ def test_bootstrap_readiness_verify_only_uses_existing_surfaces(monkeypatch: pyt
 
     assert rc == 0
     assert calls == [
-        ("model", ("whisper-large-v3-turbo", True)),
+        ("model", ("stt", "whisper-large-v3-turbo", True)),
+        ("model", ("stt", "whisper-small", True)),
+        ("model", ("tts", "kokoro-v1.0", True)),
         ("preflight", "bootstrap-readiness"),
     ]
 
 
 def test_bootstrap_readiness_fails_closed_when_not_ready(monkeypatch: pytest.MonkeyPatch) -> None:
     profile = _build_profile(profile_id="bootstrap-fail")
-    monkeypatch.setattr("scripts.bootstrap_readiness._run_model_surface", lambda model_name, verify_only: 0)
+    report = type(
+        "_Report",
+        (),
+        {
+            "profile": profile,
+            "flags": type(
+                "_Flags",
+                (),
+                {
+                    "stt_recommended_model": "whisper-large-v3-turbo",
+                    "tts_recommended_model": "kokoro-v1.0",
+                },
+            )(),
+        },
+    )()
+    monkeypatch.setattr(
+        "scripts.bootstrap_readiness._run_model_surface",
+        lambda *, family, model_name, verify_only: 0,
+    )
     monkeypatch.setattr(
         "scripts.bootstrap_readiness.run_profiler",
-        lambda: type("_Report", (), {"profile": profile})(),
+        lambda: report,
     )
     monkeypatch.setattr(
         "scripts.bootstrap_readiness.run_hardware_preflight",

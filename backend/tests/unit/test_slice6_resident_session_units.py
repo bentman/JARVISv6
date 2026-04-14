@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+import time
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -42,7 +44,6 @@ def test_session_service_start_sets_listening_and_session(monkeypatch) -> None:
 
     monkeypatch.setattr(session_service.SessionManager, "open_session", staticmethod(lambda: fake_session))
     monkeypatch.setattr(session_service.SessionManager, "close_session", staticmethod(lambda _s: None))
-    monkeypatch.setattr(session_service, "select_wake_runtime", lambda: None)
     monkeypatch.setattr(session_service.ResidentSessionService, "_run_loop", lambda self: None)
 
     svc = session_service.ResidentSessionService()
@@ -62,7 +63,6 @@ def test_session_service_stop_sets_stopped_and_closes_session(monkeypatch) -> No
 
     monkeypatch.setattr(session_service.SessionManager, "open_session", staticmethod(lambda: fake_session))
     monkeypatch.setattr(session_service.SessionManager, "close_session", staticmethod(lambda s: closed.append(s)))
-    monkeypatch.setattr(session_service, "select_wake_runtime", lambda: None)
     monkeypatch.setattr(session_service.ResidentSessionService, "_run_loop", lambda self: None)
 
     svc = session_service.ResidentSessionService()
@@ -83,10 +83,11 @@ def test_submit_text_enqueues_and_sets_invoke_event(monkeypatch) -> None:
     assert svc._drain_text_once() == "hello"
 
 
-def test_push_to_talk_sets_shared_invoke_event() -> None:
+def test_push_to_talk_sets_shared_and_ptt_events() -> None:
     svc = session_service.ResidentSessionService()
     svc.push_to_talk()
     assert svc._invoke_event.is_set()
+    assert svc._ptt_event.is_set()
 
 
 def test_run_voice_once_interrupted_returns_to_listening(monkeypatch) -> None:
@@ -108,7 +109,7 @@ def test_run_voice_once_interrupted_returns_to_listening(monkeypatch) -> None:
     svc._run_voice_once()
     state = svc.state
     assert state.status == "listening"
-    assert state.turn_count == 1
+    assert state.turn_count == 0
 
 
 def test_run_loop_degrades_on_voice_exception(monkeypatch) -> None:
@@ -119,21 +120,27 @@ def test_run_loop_degrades_on_voice_exception(monkeypatch) -> None:
 
     monkeypatch.setattr(session_service.SessionManager, "open_session", staticmethod(lambda: fake_session))
     monkeypatch.setattr(session_service.SessionManager, "close_session", staticmethod(lambda _s: None))
-    monkeypatch.setattr(session_service, "select_wake_runtime", lambda: None)
-
     svc = session_service.ResidentSessionService()
 
     def _boom() -> None:
         svc._stop_event.set()
         raise RuntimeError("voice boom")
 
-    monkeypatch.setattr(session_service.ResidentSessionService, "_run_voice_once", lambda self: _boom())
+    monkeypatch.setattr(session_service.ResidentSessionService, "_run_ptt_voice_once", lambda self: _boom())
+    monkeypatch.setattr(threading.Thread, "join", lambda self, timeout=None: None)
 
     svc.start(report, personality, summary)
     worker = svc._worker_thread
     assert worker is not None
+    svc.push_to_talk()
     worker.join(timeout=2)
 
     state = svc.state
+    for _ in range(20):
+        state = svc.state
+        if state.status == "degraded":
+            break
+        time.sleep(0.01)
+
     assert state.status == "degraded"
     assert any("voice boom" in item for item in state.degraded_conditions)

@@ -23,7 +23,9 @@ def _startup_context() -> SimpleNamespace:
 
 
 def test_health_route_returns_required_readiness_fields(monkeypatch) -> None:
-    monkeypatch.setattr(health_routes, "get_startup_context", _startup_context)
+    monkeypatch.setattr(health_routes, "get_startup_error", lambda: None)
+    monkeypatch.setattr(health_routes, "is_startup_context_ready", lambda: True)
+    monkeypatch.setattr(health_routes, "get_startup_context_if_ready", _startup_context)
 
     client = TestClient(api_main.app)
     response = client.get("/health")
@@ -50,6 +52,7 @@ def test_session_routes_start_state_text_stop(monkeypatch) -> None:
                 status="listening",
                 session_id="session-6",
                 turn_count=2,
+                last_turn_id="turn-2",
                 degraded_conditions=[],
                 last_response="hello",
                 last_transcript="hi",
@@ -65,6 +68,9 @@ def test_session_routes_start_state_text_stop(monkeypatch) -> None:
             cast_list = calls["submitted"]
             assert isinstance(cast_list, list)
             cast_list.append(text)
+
+        def push_to_talk(self) -> None:
+            calls["ptt"] = True
 
     fake_service = _FakeService()
     monkeypatch.setattr(session_routes, "get_startup_context", _startup_context)
@@ -95,7 +101,7 @@ def test_session_routes_start_state_text_stop(monkeypatch) -> None:
 
 def test_session_text_rejects_empty_text(monkeypatch) -> None:
     class _FakeService:
-        state = SimpleNamespace(status="listening", session_id="s", turn_count=0, degraded_conditions=[], last_response=None, last_transcript=None)
+        state = SimpleNamespace(status="listening", session_id="s", turn_count=0, last_turn_id=None, degraded_conditions=[], last_response=None, last_transcript=None)
 
         def submit_text(self, text: str) -> None:
             raise AssertionError(f"submit_text should not be called for empty text: {text}")
@@ -111,7 +117,7 @@ def test_session_text_rejects_empty_text(monkeypatch) -> None:
 
 def test_session_text_rejects_when_not_running(monkeypatch) -> None:
     class _FakeService:
-        state = SimpleNamespace(status="stopped", session_id=None, turn_count=0, degraded_conditions=[], last_response=None, last_transcript=None)
+        state = SimpleNamespace(status="stopped", session_id=None, turn_count=0, last_turn_id=None, degraded_conditions=[], last_response=None, last_transcript=None)
 
         def submit_text(self, text: str) -> None:
             raise AssertionError(f"submit_text should not be called when stopped: {text}")
