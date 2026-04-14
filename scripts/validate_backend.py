@@ -5,10 +5,13 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from urllib.error import URLError
+from urllib.request import urlopen
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -24,6 +27,11 @@ SUITES: dict[str, str] = {
     "unit": "backend/tests/unit",
     "runtime": "backend/tests/runtime",
 }
+
+BACKEND_API_SCOPE = "backend-api"
+BACKEND_HOST = "127.0.0.1"
+BACKEND_PORT = 8765
+BACKEND_HEALTH_URL = f"http://{BACKEND_HOST}:{BACKEND_PORT}/health"
 
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
@@ -68,16 +76,116 @@ def parse_scope(argv: list[str]) -> list[str]:
     scope = argv[index + 1].strip().lower()
     if scope == "all":
         return ["unit", "runtime"]
+    if scope == BACKEND_API_SCOPE:
+        return [BACKEND_API_SCOPE]
     if scope in SUITES:
         return [scope]
 
-    raise ValueError(f"Invalid --scope '{scope}'. Use: all|unit|runtime")
+    raise ValueError(f"Invalid --scope '{scope}'. Use: all|unit|runtime|{BACKEND_API_SCOPE}")
 
 
 @dataclass
 class SuiteResult:
     status: str
     summary: str
+
+
+def _probe_health_once(url: str) -> tuple[bool, str]:
+    try:
+        with urlopen(url, timeout=1.0) as response:  # nosec B310 - localhost deterministic validation
+            body = response.read().decode("utf-8", errors="replace")
+            return 200 <= response.status < 300, body
+    except URLError as exc:
+        return False, str(exc)
+    except Exception as exc:  # pragma: no cover - defensive
+        return False, str(exc)
+
+
+def _wait_for_health(url: str, timeout_s: float) -> tuple[bool, str]:
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        ok, detail = _probe_health_once(url)
+        if ok:
+            return True, detail
+        time.sleep(0.5)
+    ok, detail = _probe_health_once(url)
+    return ok, detail
+
+
+def _wait_for_unhealthy(url: str, timeout_s: float) -> bool:
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        ok, _detail = _probe_health_once(url)
+        if not ok:
+            return True
+        time.sleep(0.5)
+    ok, _detail = _probe_health_once(url)
+    return not ok
+
+
+def run_backend_api_gate(logger: ValidationLogger) -> SuiteResult:
+    logger.header("backend api gate")
+    pre_ok, pre_detail = _probe_health_once(BACKEND_HEALTH_URL)
+    if pre_ok:
+        message = (
+            "backend-api gate requires a clean start, but /health is already reachable before launch "
+            f"at {BACKEND_HEALTH_URL}: {pre_detail}"
+        )
+        logger.log(f"[FAIL] {message}")
+        return SuiteResult(status="FAIL", summary=message)
+
+    cmd = [
+        sys.executable,
+        "scripts/run_backend.py",
+        "--host",
+        BACKEND_HOST,
+        "--port",
+        str(BACKEND_PORT),
+    ]
+    logger.log(f"[INFO] launching backend: {' '.join(cmd)}")
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+
+    try:
+        healthy, detail = _wait_for_health(BACKEND_HEALTH_URL, timeout_s=20.0)
+        if not healthy:
+            process.poll()
+            startup_output = ""
+            if process.stdout is not None:
+                try:
+                    startup_output = process.stdout.read().strip()
+                except Exception:
+                    startup_output = ""
+            message = (
+                f"backend did not become healthy at {BACKEND_HEALTH_URL}; last probe detail: {detail}; "
+                f"process_exit={process.returncode}; output={startup_output[:600]}"
+            )
+            logger.log(f"[FAIL] {message}")
+            return SuiteResult(status="FAIL", summary=message)
+
+        logger.log(f"[PASS] health reachable: {detail}")
+        return SuiteResult(
+            status="PASS",
+            summary=f"health probe succeeded at {BACKEND_HEALTH_URL}",
+        )
+    finally:
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+
+        stopped = _wait_for_unhealthy(BACKEND_HEALTH_URL, timeout_s=10.0)
+        if stopped:
+            logger.log(f"[PASS] backend stopped cleanly; {BACKEND_HEALTH_URL} no longer reachable")
+        else:
+            logger.log(f"[FAIL] backend stop check failed; {BACKEND_HEALTH_URL} remained reachable")
 
 
 def run_runtime_readiness_gate(logger: ValidationLogger) -> SuiteResult:
@@ -322,6 +430,22 @@ def main(argv: list[str]) -> int:
 
     logger = ValidationLogger()
     results: dict[str, SuiteResult] = {}
+
+    if selected_suites == [BACKEND_API_SCOPE]:
+        results[BACKEND_API_SCOPE] = run_backend_api_gate(logger)
+        logger.header("Validation Summary")
+        logger.log(f"{BACKEND_API_SCOPE.upper()}: {results[BACKEND_API_SCOPE].status}")
+        logger.log("=" * 60)
+        logger.log("")
+        logger.log("[INVARIANTS]")
+        logger.log(f"{BACKEND_API_SCOPE.upper()}={results[BACKEND_API_SCOPE].status}")
+        if results[BACKEND_API_SCOPE].status == "FAIL":
+            logger.log("\n[FAIL] Validation failed - backend-api gate did not pass")
+            logger.save()
+            return 1
+        logger.log("\n[PASS] JARVISv6 backend-api gate is validated!")
+        logger.save()
+        return 0
 
     if "runtime" in selected_suites:
         prereq_gate = run_runtime_voice_model_prereq_gate(logger)

@@ -59,16 +59,60 @@ fn start_backend_lifecycle(
     backend_arc: &Arc<Mutex<BackendProcessManager>>,
     port: u16,
 ) -> Result<(), String> {
-    let mut mgr = backend_arc
-        .lock()
-        .map_err(|_| "backend manager lock poisoned".to_string())?;
+    {
+        let mut mgr = backend_arc
+            .lock()
+            .map_err(|_| "backend manager lock poisoned".to_string())?;
+        mgr.kill_backend()?;
+        mgr.spawn_backend(port)?;
+    }
 
-    mgr.kill_backend()?;
-    mgr.spawn_backend(port)?;
     let url = backend::health_url(port);
-    if let Err(err) = mgr.wait_healthy(&url, 30_000) {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_millis(700))
+        .build()
+        .map_err(|err| format!("failed to build startup health client: {err}"))?;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(30_000);
+
+    while std::time::Instant::now() < deadline {
+        let backend_running = {
+            let mut mgr = backend_arc
+                .lock()
+                .map_err(|_| "backend manager lock poisoned".to_string())?;
+            mgr.is_running()
+        };
+
+        if !backend_running {
+            let mut mgr = backend_arc
+                .lock()
+                .map_err(|_| "backend manager lock poisoned".to_string())?;
+            let _ = mgr.kill_backend();
+            return Err(format!(
+                "backend failed startup health gate: backend exited before becoming healthy. spawn log tail:\n{}\nstartup log tail:\n{}",
+                backend::read_spawn_log_tail(40),
+                backend::read_startup_log_tail(40)
+            ));
+        }
+
+        if let Ok(resp) = client.get(&url).send() {
+            if resp.status().is_success() {
+                break;
+            }
+        }
+
+        std::thread::sleep(std::time::Duration::from_millis(250));
+    }
+
+    if std::time::Instant::now() >= deadline {
+        let mut mgr = backend_arc
+            .lock()
+            .map_err(|_| "backend manager lock poisoned".to_string())?;
         let _ = mgr.kill_backend();
-        return Err(format!("backend failed startup health gate: {err}"));
+        return Err(format!(
+            "backend failed startup health gate: backend health check timed out after 30000ms for {url}. spawn log tail:\n{}\nstartup log tail:\n{}",
+            backend::read_spawn_log_tail(40),
+            backend::read_startup_log_tail(40)
+        ));
     }
 
     let _ = post_json_empty(&session_start_url())

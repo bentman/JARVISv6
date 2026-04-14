@@ -25,6 +25,12 @@
 
 ## Inventory
 
+- Capability: Durable Desktop Host + Resident Lifecycle (Slice 6) verified - 2026-04-14 11:32
+  - State: Verified
+  - Location: `desktop/src-tauri/src/lib.rs`, `desktop/src-tauri/src/tray.rs`, `desktop/src-tauri/src/backend.rs`, `desktop/src/main.js`, `desktop/src/index.html`, `desktop/src/style.css`, `backend/app/services/session_service.py`, `backend/app/api/routes/health.py`, `backend/app/api/routes/session.py`, `scripts/run_backend.py`, `scripts/run_jarvis.py`, `scripts/validate_backend.py`
+  - Validation: `cargo tauri build --debug`; desktop live runtime validation (backend/session up, resident turns complete, status returns to listening, PTT/hotkey path working, tray/window lifecycle intact); `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_slice6_api_routes_session_units.py -q`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope backend-api`; `backend/.venv/Scripts/python scripts/validate_backend.py --scope all`
+  - Notes: Desktop shell is the durable app surface and backend API is the host/service bridge; resident session lifecycle is active through desktop with backend-truth wake/runtime state projection and conversation rendering; `scripts/run_jarvis.py` is marked diagnostic/developer-only and backend API regression gating exists via `validate_backend.py --scope backend-api`.
+
 - Capability: Presence and Persona (Slice 5B) verified - 2026-04-09 23:08
   - State: Verified
   - Location: `backend/app/models/manager.py`, `scripts/bootstrap_readiness.py`, `backend/app/runtimes/wake/base.py`, `backend/app/runtimes/wake/local_runtime.py`, `backend/app/runtimes/wake/wakeword_runtime.py`, `backend/app/personality/schema.py`, `backend/app/personality/loader.py`, `backend/app/personality/acknowledgment.py`, `backend/app/services/voice_service.py`, `scripts/run_jarvis.py`, `backend/tests/unit/test_slice5b_presence_units.py`, `backend/tests/unit/test_slice5b1_wake_runtime_units.py`, `backend/tests/unit/test_slice5b2_personality_schema_units.py`, `backend/tests/unit/test_slice5b3_acknowledgment_units.py`, `backend/tests/unit/test_slice5a_shell_units.py`

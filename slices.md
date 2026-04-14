@@ -85,7 +85,7 @@ Notes:
 
 ---
 
-### Slice 6 — Durable Desktop Host + Resident Lifecycle
+~~### Slice 6 — Durable Desktop Host + Resident Lifecycle~~ Completed
 
 Goal: replace the bounded proving host with the real `desktop/` product shell and close the remaining same-session resident interaction gap.
 

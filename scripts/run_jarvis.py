@@ -1,3 +1,8 @@
+# DIAGNOSTIC / DEVELOPER TOOL ONLY
+# run_jarvis.py is a bounded proving host retained for offline debugging.
+# The durable application surface is desktop/ (Tauri).
+# Normal users should launch JARVIS via the desktop application.
+
 from __future__ import annotations
 
 import argparse
