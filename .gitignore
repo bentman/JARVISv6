@@ -193,14 +193,14 @@ reports/validation/*
 # Model artifacts (prevent large binary commits anywhere)
 # ------------------------------------------------------------
 # Downloaded model artifacts — do not commit
-!models/llm/.gitkeep
 models/llm/*
-!models/stt/.gitkeep
+!models/llm/.gitkeep
 models/stt/*
-!models/tts/.gitkeep
+!models/stt/.gitkeep
 models/tts/*
-!models/wake/.gitkeep
+!models/tts/.gitkeep
 models/wake/*
+!models/wake/.gitkeep
 
 # global heavy model artifacts
 **/*.gguf
@@ -210,3 +210,4 @@ models/wake/*
 **/*.pth
 **/*.ckpt
 **/*.onnx
+**/*.ppn
