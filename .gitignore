@@ -121,40 +121,55 @@ Thumbs.db
 !/data/archives/.gitkeep
 
 # data/cache
-!/data/cache/.gitkeep
 /data/cache/*
-!/data/redis/.gitkeep
+!/data/cache/.gitkeep
 /data/redis/*
-!/data/turns/.gitkeep
+!/data/redis/.gitkeep
 /data/turns/*
+!/data/turns/.gitkeep
 
 # data/episodic
+/data/episodic/*
 !/data/episodic/.gitkeep
 
 # data/logs
-!/data/logs/.gitkeep
 /data/logs/*
 /data/logs/*.jsonl
+!/data/logs/.gitkeep
 
 # data/memory
+/data/memory/*
 !/data/memory/.gitkeep
-!/data/memory/episodic/.gitkeep
+!/data/memory/episodic/
 /data/memory/episodic/*
-!/data/memory/semantic/.gitkeep
+!/data/memory/episodic/.gitkeep
+!/data/memory/semantic/
 /data/memory/semantic/*
-!/data/memory/working/.gitkeep
+!/data/memory/semantic/.gitkeep
+!/data/memory/working/
 /data/memory/working/*
 !/data/memory/working/.gitkeep
-/data/memory/working/*
 
 # data/search
+/data/search/*
 !/data/search/.gitkeep
-!/data/search/searxng/.gitkeep
+!/data/search/searxng/
 /data/search/searxng/*
-!/data/search/ddgs/.gitkeep
+!/data/search/searxng/.gitkeep
+!/data/search/ddgs/
 /data/search/ddgs/*
-!/data/search/tavily/.gitkeep
+!/data/search/ddgs/.gitkeep
+!/data/search/tavily/
 /data/search/tavily/*
+!/data/search/tavily/.gitkeep
+
+# data/sessions
+/data/sessions/*
+!/data/sessions/.gitkeep
+
+# data/temp
+/data/temp/*
+!/data/temp/.gitkeep
 
 # generic runtime artifacts (fallback)
 /data/**/*.db
@@ -176,18 +191,18 @@ Thumbs.db
 /logs/
 
 # report outputs (repo-root anchored)
-!/reports/.gitkeep
 /reports/*.txt
 /reports/*.err
 /reports/*.json
-!reports/benchmarks/.gitkeep
 reports/benchmarks/*
-!reports/diagnogstics/.gitkeep
+!reports/benchmarks/.gitkeep
 reports/diagnogstics/*
-!reports/tests/.gitkeep
+!reports/diagnogstics/.gitkeep
 reports/tests/*
-!reports/validation/.gitkeep
+!reports/tests/.gitkeep
 reports/validation/*
+!reports/validation/.gitkeep
+!/reports/.gitkeep
 
 # ------------------------------------------------------------
 # Model artifacts (prevent large binary commits anywhere)
