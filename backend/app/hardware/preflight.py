@@ -19,7 +19,9 @@ _HW_GPU_CUDA_MANIFEST_ID = "hw-gpu-nvidia-cuda"
 _HW_NPU_PRESENT_MANIFEST_ID = "hw-npu-present"
 
 
-_SUPPORTED_REQUIREMENT_RE = re.compile(r"^([A-Za-z0-9_.-]+)(>=|==)([A-Za-z0-9_.+-]+)$")
+_SUPPORTED_REQUIREMENT_RE = re.compile(
+    r"^([A-Za-z0-9_.-]+)(?:\[([A-Za-z0-9_.-]+(?:,[A-Za-z0-9_.-]+)*)\])?(>=|==)([A-Za-z0-9_.+-]+)$"
+)
 _CUDA_DLL_DIRS_INITIALIZED = False
 _CUDA_DLL_DIR_HANDLES: list[object] = []
 

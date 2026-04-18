@@ -1,0 +1,17 @@
+{
+  "manifest_id": "hw-gpu-amd",
+  "version": "0.0.1",
+  "merge_behavior": "additive",
+  "applies_when": {
+    "gpu_available": true,
+    "gpu_vendor": [
+      "amd"
+    ]
+  },
+  "additive_requirements": {
+    "python_packages": [
+      "pyrsmi>=1.0"
+    ]
+  },
+  "notes": "AMD GPU additive requirements. pyrsmi provides ROCm SMI bindings for AMD GPU telemetry and is meaningless on non-AMD hosts."
+}

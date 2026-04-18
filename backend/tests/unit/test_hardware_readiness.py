@@ -119,28 +119,43 @@ def _build_profile(**overrides: object) -> HardwareProfile:
 
 def test_resolver_cpu_host_resolves_base_cpu_manifest() -> None:
     result = resolve_hardware_profiles(_build_profile(gpu_available=False, cuda_available=False))
-    assert result["matched_manifest_ids"] == ["hw-cpu-base"]
-    assert result["merged_additive_requirements"]["python_packages"] == []
+    assert result["matched_manifest_ids"] == ["hw-cpu-base", "hw-x64-base"]
+    assert result["merged_additive_requirements"]["python_packages"] == [
+        "onnxruntime>=1.17",
+        "faster-whisper>=1.0",
+        "kokoro>=0.9.4",
+        "misaki[en]>=0.9.3",
+    ]
 
 
 def test_resolver_gpu_without_cuda_resolves_noncuda_manifest() -> None:
     result = resolve_hardware_profiles(
         _build_profile(gpu_available=True, gpu_vendor="intel", cuda_available=False)
     )
-    assert result["matched_manifest_ids"] == ["hw-cpu-base", "hw-gpu-noncuda", "hw-gpu-present"]
+    assert result["matched_manifest_ids"] == [
+        "hw-cpu-base",
+        "hw-gpu-noncuda",
+        "hw-gpu-present",
+        "hw-x64-base",
+    ]
 
 
 def test_resolver_gpu_with_cuda_resolves_cuda_manifest() -> None:
     result = resolve_hardware_profiles(
         _build_profile(gpu_available=True, gpu_vendor="nvidia", cuda_available=True)
     )
-    assert result["matched_manifest_ids"] == ["hw-cpu-base", "hw-gpu-nvidia-cuda", "hw-gpu-present"]
+    assert result["matched_manifest_ids"] == [
+        "hw-cpu-base",
+        "hw-gpu-nvidia-cuda",
+        "hw-gpu-present",
+        "hw-x64-base",
+    ]
     assert "nvidia-cublas-cu12>=12.0" in result["merged_additive_requirements"]["python_packages"]
 
 
 def test_resolver_npu_resolves_npu_manifest() -> None:
     result = resolve_hardware_profiles(_build_profile(npu_available=True, npu_vendor="intel"))
-    assert result["matched_manifest_ids"] == ["hw-cpu-base", "hw-npu-present"]
+    assert result["matched_manifest_ids"] == ["hw-cpu-base", "hw-npu-present", "hw-x64-base"]
 
 
 def test_resolver_combined_hardware_matches_multiple_manifests_additively() -> None:
@@ -158,11 +173,18 @@ def test_resolver_combined_hardware_matches_multiple_manifests_additively() -> N
         "hw-gpu-nvidia-cuda",
         "hw-gpu-present",
         "hw-npu-present",
+        "hw-x64-base",
     ]
     assert result["merged_additive_requirements"]["python_packages"] == [
+        "GPUtil>=1.4",
+        "nvidia-ml-py>=12.0",
         "nvidia-cublas-cu12>=12.0",
         "nvidia-cudnn-cu12>=9.0",
         "torch>=2.11.0",
+        "onnxruntime>=1.17",
+        "faster-whisper>=1.0",
+        "kokoro>=0.9.4",
+        "misaki[en]>=0.9.3",
     ]
     assert result["merged_additive_requirements"]["install"]["pip_extra_index_urls"] == [
         "https://download.pytorch.org/whl/cu128"

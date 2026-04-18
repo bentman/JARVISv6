@@ -16,10 +16,12 @@
       ]
     },
     "python_packages": [
+      "GPUtil>=1.4",
+      "nvidia-ml-py>=12.0",
       "nvidia-cublas-cu12>=12.0",
       "nvidia-cudnn-cu12>=9.0",
       "torch>=2.11.0"
     ]
   },
-  "notes": "NVIDIA CUDA additive requirements for hardware-level package provisioning and DLL/runtime evidence checks in preflight code."
+  "notes": "NVIDIA CUDA additive requirements: telemetry (GPUtil, nvidia-ml-py), CUDA libraries (cublas, cudnn), and torch for GPU inference and DLL/runtime evidence checks in preflight code."
 }

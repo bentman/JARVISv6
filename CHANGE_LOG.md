@@ -15,6 +15,11 @@
 
 ## Entries
 
+- 2026-04-18 06:33
+  - Summary: Provisioning correction closeout was completed by reducing `backend/requirements.txt` to universal/base dependencies, preserving the additive-only hardware-manifest model for hardware/platform-specific packages, fixing hardware preflight requirement parsing to accept extras syntax (for example `misaki[en]>=0.9.3`), and aligning hardware-readiness unit expectations to current manifest-resolution truth.
+  - Scope: backend/requirements.txt, config/hardware/hw_x64_base.json, config/hardware/hw_gpu_nvidia_cuda.json, config/hardware/hw_gpu_amd.json, backend/app/hardware/preflight.py, backend/tests/unit/test_hardware_readiness.py, CHANGE_LOG.md
+  - Evidence: `backend/.venv/Scripts/python -m pytest backend/tests/unit/test_hardware_readiness.py -q` → PASS (`29 passed in 2.71s`); `backend/.venv/Scripts/python .\scripts\validate_backend.py --scope unit` → PASS (`PASS: unit: 159 tests`, `UNIT: PASS`).
+
 - 2026-04-14 12:28
   - Summary: Post-closeout Slice 6 concurrency correction was completed by confirming the startup concern was valid and narrowing backend-manager mutex scope in `desktop/src-tauri/src/lib.rs` so startup no longer holds the lock across the full health-wait window, removing start/health lock-contention responsiveness risk.
   - Scope: desktop/src-tauri/src/lib.rs, CHANGE_LOG.md

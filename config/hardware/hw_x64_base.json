@@ -1,0 +1,17 @@
+{
+  "manifest_id": "hw-x64-base",
+  "version": "0.0.1",
+  "merge_behavior": "additive",
+  "applies_when": {
+    "arch": "amd64"
+  },
+  "additive_requirements": {
+    "python_packages": [
+      "onnxruntime>=1.17",
+      "faster-whisper>=1.0",
+      "kokoro>=0.9.4",
+      "misaki[en]>=0.9.3"
+    ]
+  },
+  "notes": "x86_64-only runtime packages. ctranslate2 (faster-whisper) and torch (kokoro) have no win_arm64 PyPI wheels; these must not be in universal base. Not applied on Windows ARM64 or other non-x64 hosts."
+}
