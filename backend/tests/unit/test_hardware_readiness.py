@@ -181,6 +181,7 @@ def test_arm64_manifest_additive_packages_contain_onnxruntime_and_kokoro_onnx() 
     result = resolve_hardware_profiles(_build_profile(arch="ARM64"))
     assert result["merged_additive_requirements"]["python_packages"] == [
         "onnxruntime>=1.20",
+        "onnx-asr[cpu,hub]>=0.7.0",
         "kokoro-onnx>=0.5.0",
         "sounddevice>=0.4",
         "soundfile>=0.12",

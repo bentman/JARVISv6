@@ -399,7 +399,11 @@ def test_play_audio_interruptible_pre_set_flag_returns_false(
     interrupt_flag.set()
 
     monkeypatch.setattr(playback, "has_output_device", lambda: True)
-    monkeypatch.setattr(playback.sf, "read", lambda _path: (np.zeros((32, 1), dtype=np.float32), 16000))
+    monkeypatch.setattr(
+        playback,
+        "_read_pcm16_wav",
+        lambda _path, *, op_name: (np.zeros((32, 1), dtype=np.float32), 16000),
+    )
     monkeypatch.setattr(playback.sd, "play", lambda data, rate: None)
     monkeypatch.setattr(playback.sd, "stop", lambda: stop_calls.__setitem__("count", stop_calls["count"] + 1))
     monkeypatch.setattr(playback.sd, "get_stream", lambda: _StreamState([True, False]))
@@ -422,7 +426,11 @@ def test_play_audio_interruptible_interrupts_active_playback(
     interrupt_flag = threading.Event()
 
     monkeypatch.setattr(playback, "has_output_device", lambda: True)
-    monkeypatch.setattr(playback.sf, "read", lambda _path: (np.zeros((32, 1), dtype=np.float32), 16000))
+    monkeypatch.setattr(
+        playback,
+        "_read_pcm16_wav",
+        lambda _path, *, op_name: (np.zeros((32, 1), dtype=np.float32), 16000),
+    )
     monkeypatch.setattr(playback.sd, "play", lambda data, rate: None)
     monkeypatch.setattr(playback.sd, "stop", lambda: stop_calls.__setitem__("count", stop_calls["count"] + 1))
     monkeypatch.setattr(playback.sd, "get_stream", lambda: _StreamState([True, True, False]))
@@ -450,7 +458,11 @@ def test_play_audio_interruptible_natural_completion_returns_true(
     interrupt_flag = threading.Event()
 
     monkeypatch.setattr(playback, "has_output_device", lambda: True)
-    monkeypatch.setattr(playback.sf, "read", lambda _path: (np.zeros((32, 1), dtype=np.float32), 16000))
+    monkeypatch.setattr(
+        playback,
+        "_read_pcm16_wav",
+        lambda _path, *, op_name: (np.zeros((32, 1), dtype=np.float32), 16000),
+    )
     monkeypatch.setattr(playback.sd, "play", lambda data, rate: None)
     monkeypatch.setattr(playback.sd, "stop", lambda: stop_calls.__setitem__("count", stop_calls["count"] + 1))
     monkeypatch.setattr(playback.sd, "get_stream", lambda: _StreamState([False]))
