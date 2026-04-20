@@ -335,3 +335,27 @@ def test_stt_selector_returns_none_when_no_readiness_safe_device(monkeypatch) ->
     report.flags.stt_recommended_device = "unavailable"
     selected = stt_runtime.select_stt_runtime(report)
     assert selected is None
+
+
+def test_stt_selector_selects_onnx_whisper_runtime_when_recommended(monkeypatch) -> None:
+    class FakeOnnxRuntime:
+        def __init__(self, model_name: str, device: str) -> None:
+            self.model_name = model_name
+            self.device = device
+
+        def is_available(self) -> bool:
+            return True
+
+    monkeypatch.setattr("backend.app.runtimes.stt.stt_runtime.OnnxWhisperSTT", FakeOnnxRuntime)
+    monkeypatch.setattr("backend.app.runtimes.stt.stt_runtime._STT_RUNTIME_CACHE", {})
+
+    report = _report()
+    report.flags.stt_recommended_runtime = "onnx-whisper"
+    report.flags.stt_recommended_model = "whisper-small-onnx"
+    report.flags.stt_recommended_device = "cpu"
+
+    selected = stt_runtime.select_stt_runtime(report)
+    assert selected is not None
+    assert isinstance(selected, FakeOnnxRuntime)
+    assert getattr(selected, "model_name", None) == "whisper-small-onnx"
+    assert getattr(selected, "device", None) == "cpu"

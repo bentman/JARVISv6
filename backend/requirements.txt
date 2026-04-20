@@ -12,10 +12,10 @@ psutil>=5.9
 # ============================================================
 # faster-whisper, kokoro, and misaki are x86_64-only (ctranslate2 / torch
 # have no win_arm64 PyPI wheels) and are declared in hw_x64_base.json.
+# sounddevice and soundfile are hardware-profile-owned runtime surfaces and are
+# declared in hw_x64_base.json / hw_arm64_base.json.
 # pvporcupine is deferred to a future wake-word provisioning manifest.
 pvporcupine>=3.0
-sounddevice>=0.4
-soundfile>=0.12
 
 # ============================================================
 # LLM / AI

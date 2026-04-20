@@ -19,10 +19,13 @@ def test_profiler_live_returns_expected_runtime_contract() -> None:
     }
     assert report.flags.stt_recommended_model in {
         "whisper-large-v3-turbo",
+        "whisper-small-onnx",
         "whisper-small",
         "whisper-base",
         "whisper-tiny",
     }
+    assert report.flags.tts_recommended_runtime in {"kokoro", "onnx-kokoro"}
+    assert report.flags.tts_recommended_model in {"kokoro-v1.0", "kokoro-v1.0-onnx"}
     assert hasattr(report, "readiness")
     assert report.readiness.stt_selected_device in {"cuda", "cpu", "unavailable"}
     assert report.readiness.tts_selected_device in {"cuda", "cpu", "unavailable"}

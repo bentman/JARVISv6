@@ -1,0 +1,18 @@
+{
+  "manifest_id": "hw-arm64-base",
+  "version": "0.0.1",
+  "merge_behavior": "additive",
+  "applies_when": {
+    "arch": "arm64"
+  },
+  "additive_requirements": {
+    "python_packages": [
+      "onnxruntime>=1.20",
+      "onnx-asr[cpu,hub]>=0.7.0",
+      "kokoro-onnx>=0.5.0",
+      "sounddevice>=0.4",
+      "soundfile>=0.12"
+    ]
+  },
+  "notes": "ARM64-only runtime packages. onnxruntime supplies the CPU-EP STT backend and the inference surface kokoro-onnx consumes. Audio playback deps (sounddevice, soundfile) are profile-owned here and in hw_x64_base; readiness still depends on runtime evidence verification. Does not apply on x64 hosts; NPU/QNN acceleration is out of scope for this manifest."
+}

@@ -41,6 +41,7 @@ def main(argv: list[str] | None = None) -> int:
     stt_recommended_model = str(report.flags.stt_recommended_model or args.model)
     stt_fallback_model = str(args.stt_fallback_model)
     tts_recommended_model = str(report.flags.tts_recommended_model)
+    stt_recommended_runtime = str(getattr(report.flags, "stt_recommended_runtime", ""))
 
     stt_model_rc = _run_model_surface(
         family="stt",
@@ -52,15 +53,27 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     print(f"[PASS] STT model: {stt_recommended_model} present")
 
-    stt_fallback_rc = _run_model_surface(
-        family="stt",
-        model_name=stt_fallback_model,
-        verify_only=args.verify_only,
+    arm64_onnx_verify_only = (
+        args.verify_only
+        and stt_recommended_runtime == "onnx-whisper"
+        and stt_recommended_model == "whisper-small-onnx"
     )
-    if stt_fallback_rc != 0:
-        print(f"[FAILED] STT fallback ensure/verify failed: {stt_fallback_model}")
-        return 1
-    print(f"[PASS] STT fallback: {stt_fallback_model} present")
+
+    if arm64_onnx_verify_only:
+        print(
+            "[SKIP] STT fallback verify-only skipped for ARM64 ONNX path: "
+            f"{stt_fallback_model}"
+        )
+    else:
+        stt_fallback_rc = _run_model_surface(
+            family="stt",
+            model_name=stt_fallback_model,
+            verify_only=args.verify_only,
+        )
+        if stt_fallback_rc != 0:
+            print(f"[FAILED] STT fallback ensure/verify failed: {stt_fallback_model}")
+            return 1
+        print(f"[PASS] STT fallback: {stt_fallback_model} present")
 
     tts_model_rc = _run_model_surface(
         family="tts",

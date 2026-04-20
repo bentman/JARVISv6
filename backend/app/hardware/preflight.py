@@ -17,6 +17,7 @@ from backend.app.models.catalog import load_stt_catalog, load_tts_catalog
 
 _HW_GPU_CUDA_MANIFEST_ID = "hw-gpu-nvidia-cuda"
 _HW_NPU_PRESENT_MANIFEST_ID = "hw-npu-present"
+_HW_ARM64_BASE_MANIFEST_ID = "hw-arm64-base"
 
 
 _SUPPORTED_REQUIREMENT_RE = re.compile(
@@ -337,6 +338,17 @@ def derive_backend_device_readiness(
 def derive_stt_device_readiness(preflight_result: dict[str, object]) -> dict[str, object]:
     """Derive STT device-readiness from preflight verification evidence."""
 
+    raw_manifest_ids = preflight_result.get("matched_manifest_ids")
+    if not isinstance(raw_manifest_ids, list) or not all(
+        isinstance(item, str) for item in raw_manifest_ids
+    ):
+        raise ValueError("invalid preflight matched_manifest_ids shape")
+
+    if _HW_ARM64_BASE_MANIFEST_ID in raw_manifest_ids:
+        cpu_ready_tokens = ["import:onnxruntime"]
+    else:
+        cpu_ready_tokens = ["import:faster_whisper"]
+
     return derive_backend_device_readiness(
         preflight_result,
         cuda_manifest_id=_HW_GPU_CUDA_MANIFEST_ID,
@@ -347,26 +359,45 @@ def derive_stt_device_readiness(preflight_result: dict[str, object]) -> dict[str
         "dll:cublas64_12.dll",
         "dll:cudnn64_9.dll",
         ],
-        cpu_ready_tokens=["import:faster_whisper"],
+        cpu_ready_tokens=cpu_ready_tokens,
     )
 
 
 def derive_tts_device_readiness(preflight_result: dict[str, object]) -> dict[str, object]:
     """Derive TTS device-readiness from preflight verification evidence."""
 
+    raw_manifest_ids = preflight_result.get("matched_manifest_ids")
+    if not isinstance(raw_manifest_ids, list) or not all(
+        isinstance(item, str) for item in raw_manifest_ids
+    ):
+        raise ValueError("invalid preflight matched_manifest_ids shape")
+
+    if _HW_ARM64_BASE_MANIFEST_ID in raw_manifest_ids:
+        cpu_ready_tokens = ["import:kokoro_onnx"]
+    else:
+        cpu_ready_tokens = [
+            "import:kokoro",
+            "import:sounddevice",
+            "import:soundfile",
+        ]
+
     return derive_backend_device_readiness(
         preflight_result,
         cuda_manifest_id=_HW_GPU_CUDA_MANIFEST_ID,
         cuda_required_tokens=[
             "import:kokoro",
+            "import:sounddevice",
+            "import:soundfile",
             "import:torch",
             "tts_runtime:kokoro",
             "torch_cuda:available",
             "dll:cublas64_12.dll",
             "dll:cudnn64_9.dll",
         ],
-        cpu_ready_tokens=["import:kokoro"],
+        cpu_ready_tokens=cpu_ready_tokens,
     )
+
+
 
 
 

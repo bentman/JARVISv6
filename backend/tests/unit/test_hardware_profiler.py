@@ -5,6 +5,7 @@ from backend.app.hardware.profiler import (
     _derive_backend_readiness,
     classify_device_class,
     derive_capability_flags,
+    resolve_backend_evidence_tokens,
     run_profiler,
 )
 
@@ -136,3 +137,134 @@ def test_run_profiler_overrides_recommended_device_from_readiness(monkeypatch) -
     assert report.readiness.llm_local_ready is False
     assert report.readiness.llm_service_ready is False
     assert report.readiness.llm_selected_runtime == "unavailable"
+
+
+def test_arm64_host_resolves_stt_recommendation_to_onnx_whisper_cpu() -> None:
+    profile = HardwareProfile(
+        os="Windows",
+        arch="ARM64",
+        cpu_name="unit-cpu",
+        cpu_physical_cores=8,
+        cpu_logical_cores=8,
+        cpu_max_freq_mhz=3000.0,
+        gpu_available=False,
+        gpu_name=None,
+        gpu_vendor=None,
+        gpu_vram_gb=None,
+        cuda_available=False,
+        npu_available=False,
+        npu_vendor=None,
+        npu_tops=None,
+        memory_total_gb=16.0,
+        memory_available_gb=8.0,
+        device_class="desktop",
+        profile_id="arm64-unit",
+    )
+
+    flags = derive_capability_flags(profile)
+
+    assert flags.stt_recommended_runtime == "onnx-whisper"
+    assert flags.stt_recommended_model == "whisper-small-onnx"
+    assert flags.stt_recommended_device == "cpu"
+
+
+def test_arm64_host_resolves_tts_recommendation_to_onnx_kokoro_cpu() -> None:
+    profile = HardwareProfile(
+        os="Windows",
+        arch="ARM64",
+        cpu_name="unit-cpu",
+        cpu_physical_cores=8,
+        cpu_logical_cores=8,
+        cpu_max_freq_mhz=3000.0,
+        gpu_available=False,
+        gpu_name=None,
+        gpu_vendor=None,
+        gpu_vram_gb=None,
+        cuda_available=False,
+        npu_available=False,
+        npu_vendor=None,
+        npu_tops=None,
+        memory_total_gb=16.0,
+        memory_available_gb=8.0,
+        device_class="desktop",
+        profile_id="arm64-unit",
+    )
+
+    flags = derive_capability_flags(profile)
+
+    assert flags.tts_recommended_runtime == "onnx-kokoro"
+    assert flags.tts_recommended_model == "kokoro-v1.0-onnx"
+    assert flags.tts_recommended_device == "cpu"
+
+
+def test_arm64_stt_evidence_tokens_do_not_include_cuda_dll_tokens() -> None:
+    tokens = resolve_backend_evidence_tokens("stt", ["hw-cpu-base", "hw-arm64-base"])
+
+    assert tokens == ["import:onnxruntime", "stt_runtime:onnx-whisper"]
+    assert "dll:cublas64_12.dll" not in tokens
+    assert "dll:cudnn64_9.dll" not in tokens
+
+
+def test_arm64_tts_evidence_tokens_do_not_include_torch_cuda_token() -> None:
+    tokens = resolve_backend_evidence_tokens("tts", ["hw-cpu-base", "hw-arm64-base"])
+
+    assert tokens == ["import:kokoro_onnx", "tts_runtime:onnx-kokoro"]
+    assert "torch_cuda:available" not in tokens
+
+
+def test_x64_cuda_host_stt_recommendation_unchanged_regression() -> None:
+    profile = HardwareProfile(
+        os="Windows",
+        arch="AMD64",
+        cpu_name="unit-cpu",
+        cpu_physical_cores=8,
+        cpu_logical_cores=16,
+        cpu_max_freq_mhz=3000.0,
+        gpu_available=True,
+        gpu_name="NVIDIA",
+        gpu_vendor="nvidia",
+        gpu_vram_gb=12.0,
+        cuda_available=True,
+        npu_available=False,
+        npu_vendor=None,
+        npu_tops=None,
+        memory_total_gb=32.0,
+        memory_available_gb=20.0,
+        device_class="desktop",
+        profile_id="nvidia-cuda-desktop-32gb",
+    )
+
+    flags = derive_capability_flags(profile)
+
+    assert flags.stt_recommended_runtime == "faster-whisper"
+    assert flags.stt_recommended_model == "whisper-large-v3-turbo"
+    assert flags.stt_recommended_device == "cuda"
+
+
+def test_x64_cuda_host_tts_recommendation_unchanged_regression() -> None:
+    profile = HardwareProfile(
+        os="Windows",
+        arch="AMD64",
+        cpu_name="unit-cpu",
+        cpu_physical_cores=8,
+        cpu_logical_cores=16,
+        cpu_max_freq_mhz=3000.0,
+        gpu_available=True,
+        gpu_name="NVIDIA",
+        gpu_vendor="nvidia",
+        gpu_vram_gb=12.0,
+        cuda_available=True,
+        npu_available=False,
+        npu_vendor=None,
+        npu_tops=None,
+        memory_total_gb=32.0,
+        memory_available_gb=20.0,
+        device_class="desktop",
+        profile_id="nvidia-cuda-desktop-32gb",
+    )
+
+    flags = derive_capability_flags(profile)
+
+    assert flags.tts_recommended_runtime == "kokoro"
+    assert flags.tts_recommended_model == "kokoro-v1.0"
+    assert flags.tts_recommended_device == "cuda"

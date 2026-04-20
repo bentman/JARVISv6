@@ -105,7 +105,7 @@ def test_tts_catalog_missing_model_raises() -> None:
 
 def test_kokoro_tts_runtime_is_available(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(sys.modules, "kokoro", types.SimpleNamespace(KPipeline=object))
-    assert KokoroTTSRuntime().is_available() is True
+    assert KokoroTTSRuntime(model_name="kokoro-v1.0").is_available() is True
 
 
 def test_tts_runtime_selector_returns_none_when_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -152,6 +152,59 @@ def test_tts_runtime_selector_respects_cuda_recommendation(monkeypatch: pytest.M
     selected = select_tts_runtime(report)
     assert isinstance(selected, FakeRuntime)
     assert selected.device == "cuda"
+
+
+def test_tts_runtime_selector_selects_onnx_kokoro_runtime_when_recommended(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeOnnxRuntime:
+        def __init__(self, model_name: str, device: str = "cpu") -> None:
+            self.model_name = model_name
+            self.device = device
+
+        def is_available(self) -> bool:
+            return True
+
+    monkeypatch.setattr(
+        "backend.app.runtimes.tts.tts_runtime.OnnxKokoroTTSRuntime",
+        FakeOnnxRuntime,
+    )
+    report = _report()
+    report.flags.tts_recommended_runtime = "onnx-kokoro"
+    report.flags.tts_recommended_model = "kokoro-v1.0-onnx"
+    report.flags.tts_recommended_device = "cpu"
+
+    selected = select_tts_runtime(report)
+
+    assert selected is not None
+    assert isinstance(selected, FakeOnnxRuntime)
+    assert selected.model_name == "kokoro-v1.0-onnx"
+    assert selected.device == "cpu"
+
+
+def test_tts_runtime_selector_selects_kokoro_runtime_regression_when_recommended(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeRuntime:
+        def __init__(self, model_name: str, device: str = "cpu") -> None:
+            self.model_name = model_name
+            self.device = device
+
+        def is_available(self) -> bool:
+            return True
+
+    monkeypatch.setattr("backend.app.runtimes.tts.tts_runtime.LocalTTSRuntime", FakeRuntime)
+    report = _report()
+    report.flags.tts_recommended_runtime = "kokoro"
+    report.flags.tts_recommended_model = "kokoro-v1.0"
+    report.flags.tts_recommended_device = "cpu"
+
+    selected = select_tts_runtime(report)
+
+    assert selected is not None
+    assert isinstance(selected, FakeRuntime)
+    assert selected.model_name == "kokoro-v1.0"
+    assert selected.device == "cpu"
 
 
 def test_tts_runtime_selector_returns_none_for_unavailable_recommended_device() -> None:

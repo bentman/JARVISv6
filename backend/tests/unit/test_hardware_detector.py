@@ -56,6 +56,7 @@ def test_memory_detector_returns_expected_keys() -> None:
 
 def test_profiler_run_is_unit_testable_with_monkeypatched_detectors(monkeypatch) -> None:
     monkeypatch.setattr(profiler, "detect_os", lambda: {"os": "Windows", "arch": "AMD64"})
+    monkeypatch.setattr(profiler, "_windows_battery_present", lambda: False)
     monkeypatch.setattr(
         profiler,
         "detect_cpu",

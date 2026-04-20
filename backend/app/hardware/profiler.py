@@ -29,6 +29,7 @@ from backend.app.hardware.profile_resolver import resolve_hardware_profiles
 
 _HW_GPU_CUDA_MANIFEST_ID = "hw-gpu-nvidia-cuda"
 _HW_NPU_PRESENT_MANIFEST_ID = "hw-npu-present"
+_HW_ARM64_BASE_MANIFEST_ID = "hw-arm64-base"
 
 
 def _dedupe_preserve_order(values: list[str]) -> list[str]:
@@ -46,6 +47,9 @@ def resolve_backend_evidence_tokens(backend_scope: str, matched_manifest_ids: li
     """Caller-owned backend evidence token selection for preflight verification."""
 
     if backend_scope == "stt":
+        if _HW_ARM64_BASE_MANIFEST_ID in matched_manifest_ids:
+            return ["import:onnxruntime", "stt_runtime:onnx-whisper"]
+
         tokens: list[str] = ["import:faster_whisper"]
         if _HW_GPU_CUDA_MANIFEST_ID in matched_manifest_ids:
             tokens.extend(
@@ -66,7 +70,14 @@ def resolve_backend_evidence_tokens(backend_scope: str, matched_manifest_ids: li
         return _dedupe_preserve_order(tokens)
 
     if backend_scope == "tts":
-        tokens = ["import:kokoro"]
+        if _HW_ARM64_BASE_MANIFEST_ID in matched_manifest_ids:
+            return ["import:kokoro_onnx", "tts_runtime:onnx-kokoro"]
+
+        tokens = [
+            "import:kokoro",
+            "import:sounddevice",
+            "import:soundfile",
+        ]
         if _HW_GPU_CUDA_MANIFEST_ID in matched_manifest_ids:
             tokens.extend(
                 [
@@ -210,6 +221,9 @@ def _recommend_stt(profile: HardwareProfile, requires_degraded_mode: bool) -> tu
     if requires_degraded_mode:
         return "faster-whisper", "whisper-tiny", "cpu"
 
+    if profile.arch.upper() in {"ARM64", "AARCH64"}:
+        return "onnx-whisper", "whisper-small-onnx", "cpu"
+
     if (
         (profile.gpu_vendor or "").lower() == "nvidia"
         and bool(profile.cuda_available)
@@ -236,6 +250,9 @@ def _recommend_stt(profile: HardwareProfile, requires_degraded_mode: bool) -> tu
 
 def _recommend_tts(profile: HardwareProfile) -> tuple[str, str, str]:
     """Return TTS runtime/model/device recommendation from profile inputs."""
+
+    if profile.arch.upper() in {"ARM64", "AARCH64"}:
+        return "onnx-kokoro", "kokoro-v1.0-onnx", "cpu"
 
     runtime = "kokoro"
     model = "kokoro-v1.0"

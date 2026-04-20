@@ -9,7 +9,9 @@ from backend.app.core.capabilities import HardwareProfile
 from backend.app.hardware.preflight import run_hardware_preflight
 from backend.app.hardware.preflight import derive_backend_device_readiness
 from backend.app.hardware.preflight import derive_stt_device_readiness
+from backend.app.hardware.preflight import derive_tts_device_readiness
 from backend.app.hardware.profiler import get_stt_device_readiness
+from backend.app.hardware.profiler import get_tts_device_readiness
 from backend.app.hardware.profile_resolver import resolve_hardware_profiles
 from scripts import bootstrap_readiness
 
@@ -125,6 +127,8 @@ def test_resolver_cpu_host_resolves_base_cpu_manifest() -> None:
         "faster-whisper>=1.0",
         "kokoro>=0.9.4",
         "misaki[en]>=0.9.3",
+        "sounddevice>=0.4",
+        "soundfile>=0.12",
     ]
 
 
@@ -158,6 +162,31 @@ def test_resolver_npu_resolves_npu_manifest() -> None:
     assert result["matched_manifest_ids"] == ["hw-cpu-base", "hw-npu-present", "hw-x64-base"]
 
 
+def test_arm64_host_matches_hw_arm64_base() -> None:
+    result = resolve_hardware_profiles(_build_profile(arch="ARM64"))
+    assert "hw-arm64-base" in result["matched_manifest_ids"]
+
+
+def test_arm64_host_does_not_match_hw_x64_base() -> None:
+    result = resolve_hardware_profiles(_build_profile(arch="ARM64"))
+    assert "hw-x64-base" not in result["matched_manifest_ids"]
+
+
+def test_x64_host_does_not_match_hw_arm64_base() -> None:
+    result = resolve_hardware_profiles(_build_profile(arch="AMD64"))
+    assert "hw-arm64-base" not in result["matched_manifest_ids"]
+
+
+def test_arm64_manifest_additive_packages_contain_onnxruntime_and_kokoro_onnx() -> None:
+    result = resolve_hardware_profiles(_build_profile(arch="ARM64"))
+    assert result["merged_additive_requirements"]["python_packages"] == [
+        "onnxruntime>=1.20",
+        "kokoro-onnx>=0.5.0",
+        "sounddevice>=0.4",
+        "soundfile>=0.12",
+    ]
+
+
 def test_resolver_combined_hardware_matches_multiple_manifests_additively() -> None:
     result = resolve_hardware_profiles(
         _build_profile(
@@ -185,6 +214,8 @@ def test_resolver_combined_hardware_matches_multiple_manifests_additively() -> N
         "faster-whisper>=1.0",
         "kokoro>=0.9.4",
         "misaki[en]>=0.9.3",
+        "sounddevice>=0.4",
+        "soundfile>=0.12",
     ]
     assert result["merged_additive_requirements"]["install"]["pip_extra_index_urls"] == [
         "https://download.pytorch.org/whl/cu128"
@@ -412,6 +443,10 @@ def test_preflight_does_not_invoke_model_artifact_ensure_flow(monkeypatch: pytes
         "backend.app.models.manager.ensure_model",
         lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("ensure_model should not be called")),
     )
+    monkeypatch.setattr(
+        "backend.app.hardware.preflight._verify_runtime_evidence",
+        lambda _tokens: [{"token": "import:faster_whisper", "ok": True}],
+    )
 
     result = run_hardware_preflight(profile)
     assert result["ready"] is True
@@ -490,6 +525,46 @@ def test_stt_device_readiness_unavailable_when_cpu_import_not_verified(
     assert result["cuda_ready"] is False
     assert result["cpu_ready"] is False
     assert result["selected_device"] == "unavailable"
+
+
+def test_arm64_stt_readiness_uses_onnxruntime_cpu_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    profile = _build_profile(profile_id="arm64-stt-ready", arch="ARM64")
+    monkeypatch.setattr(
+        "backend.app.hardware.profiler.run_hardware_preflight",
+        lambda _p, **kwargs: {
+            "matched_manifest_ids": ["hw-cpu-base", "hw-arm64-base"],
+            "verification_results": [
+                {"token": "import:onnxruntime", "ok": True},
+                {"token": "stt_runtime:onnx-whisper", "ok": True},
+            ],
+        },
+    )
+
+    result = get_stt_device_readiness(profile)
+
+    assert result["cuda_ready"] is False
+    assert result["cpu_ready"] is True
+    assert result["selected_device"] == "cpu"
+
+
+def test_arm64_tts_readiness_uses_kokoro_onnx_cpu_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    profile = _build_profile(profile_id="arm64-tts-ready", arch="ARM64")
+    monkeypatch.setattr(
+        "backend.app.hardware.profiler.run_hardware_preflight",
+        lambda _p, **kwargs: {
+            "matched_manifest_ids": ["hw-cpu-base", "hw-arm64-base"],
+            "verification_results": [
+                {"token": "import:kokoro_onnx", "ok": True},
+                {"token": "tts_runtime:onnx-kokoro", "ok": True},
+            ],
+        },
+    )
+
+    result = get_tts_device_readiness(profile)
+
+    assert result["cuda_ready"] is False
+    assert result["cpu_ready"] is True
+    assert result["selected_device"] == "cpu"
 
 
 def test_derive_stt_device_readiness_degrades_to_cpu_when_cuda_dll_missing() -> None:
@@ -613,6 +688,38 @@ def test_tts_device_readiness_degrades_to_cpu_when_cuda_not_verified() -> None:
         ],
         cpu_ready_tokens=["import:kokoro"],
     )
+
+    assert derived["cuda_ready"] is False
+    assert derived["cpu_ready"] is True
+    assert derived["selected_device"] == "cpu"
+
+
+def test_derive_stt_device_readiness_arm64_path_uses_onnxruntime_cpu_ready() -> None:
+    preflight_result = {
+        "matched_manifest_ids": ["hw-cpu-base", "hw-arm64-base"],
+        "verification_results": [
+            {"token": "import:onnxruntime", "ok": True},
+            {"token": "stt_runtime:onnx-whisper", "ok": True},
+        ],
+    }
+
+    derived = derive_stt_device_readiness(preflight_result)
+
+    assert derived["cuda_ready"] is False
+    assert derived["cpu_ready"] is True
+    assert derived["selected_device"] == "cpu"
+
+
+def test_derive_tts_device_readiness_arm64_path_uses_kokoro_onnx_cpu_ready() -> None:
+    preflight_result = {
+        "matched_manifest_ids": ["hw-cpu-base", "hw-arm64-base"],
+        "verification_results": [
+            {"token": "import:kokoro_onnx", "ok": True},
+            {"token": "tts_runtime:onnx-kokoro", "ok": True},
+        ],
+    }
+
+    derived = derive_tts_device_readiness(preflight_result)
 
     assert derived["cuda_ready"] is False
     assert derived["cpu_ready"] is True

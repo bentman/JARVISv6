@@ -10,8 +10,10 @@
       "onnxruntime>=1.17",
       "faster-whisper>=1.0",
       "kokoro>=0.9.4",
-      "misaki[en]>=0.9.3"
+      "misaki[en]>=0.9.3",
+      "sounddevice>=0.4",
+      "soundfile>=0.12"
     ]
   },
-  "notes": "x86_64-only runtime packages. ctranslate2 (faster-whisper) and torch (kokoro) have no win_arm64 PyPI wheels; these must not be in universal base. Not applied on Windows ARM64 or other non-x64 hosts."
+  "notes": "x86_64-only runtime packages. ctranslate2 (faster-whisper) and torch (kokoro) have no win_arm64 PyPI wheels; these must not be in universal base. Audio playback deps (sounddevice, soundfile) are profile-owned here and in hw_arm64_base. Not applied on Windows ARM64 or other non-x64 hosts."
 }
