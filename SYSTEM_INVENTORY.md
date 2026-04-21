@@ -25,6 +25,18 @@
 
 ## Inventory
 
+- Capability: ARM64 desktop startup launcher (VS18 dev-shell path) verified - 2026-04-20 19:44
+  - State: Verified
+  - Location: `scripts/run_desktop_arm64.ps1`
+  - Validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run_desktop_arm64.ps1 -Mode check`; `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run_desktop_arm64.ps1 -Mode build`; `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/run_desktop_arm64.ps1 -Mode dev`; launched-path backend probes `Invoke-WebRequest http://127.0.0.1:8765/health` and `Invoke-WebRequest -Method Post http://127.0.0.1:8765/session/start`
+  - Notes: Launcher resolves Visual Studio 18.x via `vswhere`, initializes an ARM64 shell through `VsDevCmd.bat`, enforces toolchain/env guards, and has verified `check`/`build`/`dev` flow.
+
+- Capability: ARM64 voice-capable CPU-EP path (ONNX STT + ONNX TTS) verified - 2026-04-20 12:39
+  - State: Verified
+  - Location: `config/hardware/hw_arm64_base.json`, `config/models/stt.yaml`, `config/models/tts.yaml`, `backend/app/runtimes/stt/onnx_runtime.py`, `backend/app/runtimes/tts/onnx_runtime.py`, `backend/app/runtimes/stt/stt_runtime.py`, `backend/app/runtimes/tts/tts_runtime.py`, `backend/app/hardware/profiler.py`, `backend/app/hardware/preflight.py`, `backend/tests/runtime/test_slice0_0_a_arm64_stt_turn_live.py`, `backend/tests/runtime/test_slice0_0_a_arm64_tts_turn_live.py`
+  - Validation: `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_profiler_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice0_0_a_arm64_stt_turn_live.py -v -s`; `backend/.venv/Scripts/python -m pytest backend/tests/runtime/test_slice0_0_a_arm64_tts_turn_live.py -v -s`
+  - Notes: ARM64 selection is routed to STT `onnx-whisper`/`whisper-small-onnx`/`cpu` (using `onnx-asr`-compatible model source/layout) and TTS `onnx-kokoro`/`kokoro-v1.0-onnx`/`cpu`; ARM64 live acceptance is verified with test-scoped `BargeInDetector` suppression in the two ARM64 live tests for deterministic acceptance only, without changing production interruption behavior.
+
 - Capability: Durable Desktop Host + Resident Lifecycle (Slice 6) verified - 2026-04-14 11:32
   - State: Verified
   - Location: `desktop/src-tauri/src/lib.rs`, `desktop/src-tauri/src/tray.rs`, `desktop/src-tauri/src/backend.rs`, `desktop/src/main.js`, `desktop/src/index.html`, `desktop/src/style.css`, `backend/app/services/session_service.py`, `backend/app/api/routes/health.py`, `backend/app/api/routes/session.py`, `scripts/run_backend.py`, `scripts/run_jarvis.py`, `scripts/validate_backend.py`

@@ -7,6 +7,8 @@ use backend::{BackendProcessManager, DesktopState};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
 pub const BACKEND_PORT: u16 = 8765;
+const DEFAULT_POST_TIMEOUT_SECS: u64 = 3;
+const SESSION_START_TIMEOUT_SECS: u64 = 8;
 fn health_url() -> String { format!("http://127.0.0.1:{BACKEND_PORT}/health") }
 fn session_start_url() -> String { format!("http://127.0.0.1:{BACKEND_PORT}/session/start") }
 fn session_state_url() -> String { format!("http://127.0.0.1:{BACKEND_PORT}/session/state") }
@@ -14,8 +16,12 @@ fn session_ptt_url() -> String { format!("http://127.0.0.1:{BACKEND_PORT}/sessio
 fn session_text_url() -> String { format!("http://127.0.0.1:{BACKEND_PORT}/session/text") }
 
 fn post_json_empty(url: &str) -> Result<String, String> {
+    post_json_empty_with_timeout(url, DEFAULT_POST_TIMEOUT_SECS)
+}
+
+fn post_json_empty_with_timeout(url: &str, timeout_secs: u64) -> Result<String, String> {
     let client = reqwest::blocking::Client::builder()
-        .timeout(std::time::Duration::from_secs(3))
+        .timeout(std::time::Duration::from_secs(timeout_secs))
         .build()
         .map_err(|e| format!("failed to build http client: {e}"))?;
     let resp = client
@@ -115,7 +121,7 @@ fn start_backend_lifecycle(
         ));
     }
 
-    let _ = post_json_empty(&session_start_url())
+    let _ = post_json_empty_with_timeout(&session_start_url(), SESSION_START_TIMEOUT_SECS)
         .map_err(|err| format!("backend healthy but /session/start failed: {err}"))?;
 
     Ok(())
